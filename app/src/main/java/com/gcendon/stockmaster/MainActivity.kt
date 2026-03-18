@@ -32,6 +32,7 @@ import com.gcendon.stockmaster.ui.screens.HomeScreen
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.TopAppBarDefaults
+import com.gcendon.stockmaster.ui.components.ProductCard
 
 class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class) // Material 3 usa algunas APIs experimentales aún
@@ -59,47 +60,6 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@Composable
-fun ProductCard(product: Product) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(8.dp),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .padding(16.dp)
-                .fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Column {
-                Text(
-                    text = product.name,
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = "${product.category} • Stock: ${product.currentStock} ${product.unit}",
-                    style = MaterialTheme.typography.bodyMedium
-                )
-            }
-
-            // Un indicador visual rápido
-            val statusColor =
-                if (product.currentStock <= product.minStock) Color.Red else Color.Green
-            Box(
-                modifier = Modifier
-                    .size(12.dp)
-                    .background(statusColor, shape = CircleShape)
-            )
-        }
-    }
-}
 
 // Agregamos esto para ver los cambios instantáneamente en Android Studio
 @Preview(showBackground = true)
