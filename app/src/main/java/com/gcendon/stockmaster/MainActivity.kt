@@ -28,27 +28,31 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.gcendon.stockmaster.data.Product
 import com.gcendon.stockmaster.ui.theme.StockMasterTheme
+import com.gcendon.stockmaster.ui.screens.HomeScreen
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.TopAppBarDefaults
 
 class MainActivity : ComponentActivity() {
+    @OptIn(ExperimentalMaterial3Api::class) // Material 3 usa algunas APIs experimentales aún
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             StockMasterTheme {
-                // El Scaffold es el "esqueleto" de la pantalla (Barra arriba, botones abajo)
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    // Column para apilar cosas verticalmente
-                    Column(modifier = Modifier.padding(innerPadding)) {
-                        ProductCard(
-                            product = Product(
-                                name = "Aceite de Oliva",
-                                category = "Almacén",
-                                currentStock = 0.5f,
-                                minStock = 1f,
-                                unit = "L"
+                Scaffold(
+                    modifier = Modifier.fillMaxSize(),
+                    topBar = {
+                        TopAppBar(
+                            title = { Text("Mi Stock Hogareño") },
+                            colors = TopAppBarDefaults.topAppBarColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
                             )
                         )
                     }
+                ) { padding ->
+                    HomeScreen(innerPadding = padding)
                 }
             }
         }
