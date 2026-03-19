@@ -22,6 +22,13 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import com.gcendon.stockmaster.ui.components.AddProductDialog
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.gcendon.stockmaster.ui.viewmodel.ProductViewModel
 
 class MainActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
@@ -29,6 +36,13 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
+            // 1. Instanciamos el "Cerebro" (ViewModel)
+            val viewModel: ProductViewModel = viewModel()
+
+            // 2. Creamos el "Interruptor" del Diálogo
+            // 'remember' hace que el valor no se resetee al redibujar la pantalla
+            var showDialog by remember { mutableStateOf(false) }
+
             StockMasterTheme {
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
@@ -43,9 +57,8 @@ class MainActivity : ComponentActivity() {
                     },
                     floatingActionButton = {
                         FloatingActionButton(
-                            onClick = {
-                                /* Por ahora no hace nada, aquí abriremos un formulario */
-                            },
+                            // Al hacer click, encendemos el interruptor
+                            onClick = { showDialog = true },
                             containerColor = MaterialTheme.colorScheme.primary,
                             contentColor = MaterialTheme.colorScheme.onPrimary
                         ) {
@@ -53,7 +66,20 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 ) { padding ->
-                    HomeScreen(innerPadding = padding)
+                    // Pasamos el viewModel a la HomeScreen para que lea de Firebase
+                    HomeScreen(innerPadding = padding, viewModel = viewModel)
+
+                    // Lógica del Diálogo: Si el interruptor está ON, mostramos el cartel
+                    if (showDialog) {
+                        AddProductDialog(
+                            onDismiss = { showDialog = false }, // Apagar interruptor al cerrar
+                            onConfirm = { name, category, stock ->
+                                // Enviamos los datos al ViewModel para que los suba a la nube
+                                viewModel.addProduct(name, category, stock)
+                                showDialog = false // Cerramos el diálogo después de guardar
+                            }
+                        )
+                    }
                 }
             }
         }

@@ -31,4 +31,15 @@ class ProductViewModel : ViewModel() {
                 }
             }
     }
+
+    fun addProduct(name: String, category: String, stock: Double, unit: String) {
+        val newProduct = Product(
+            name = name,
+            category = category,
+            currentStock = stock,
+            minStock = 1.0,
+            unit = unit
+        )
+        db.collection("products").add(newProduct)
+    }
 }
