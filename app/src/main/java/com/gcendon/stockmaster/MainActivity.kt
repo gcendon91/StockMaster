@@ -24,7 +24,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 
 class MainActivity : ComponentActivity() {
-    @OptIn(ExperimentalMaterial3Api::class) // Material 3 usa algunas APIs experimentales aún
+    @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -42,7 +42,6 @@ class MainActivity : ComponentActivity() {
                         )
                     },
                     floatingActionButton = {
-                        // El FAB es el botón circular característico de Android
                         FloatingActionButton(
                             onClick = {
                                 /* Por ahora no hace nada, aquí abriremos un formulario */
@@ -67,6 +66,6 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun ProductPreview() {
     StockMasterTheme {
-        ProductCard(product = Product(name = "Aceite", currentStock = 2f, minStock = 1f))
+        //ProductCard(product = Product(name = "Aceite", currentStock = 2f, minStock = 1f))
     }
 }

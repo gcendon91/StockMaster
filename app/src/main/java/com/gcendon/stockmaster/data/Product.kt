@@ -1,15 +1,15 @@
 package com.gcendon.stockmaster.data
 
 /**
- * Representa un artículo en nuestra despensa o lista de compras.
- * Usamos valores por defecto para que sea compatible con Firebase más adelante.
+ * El modelo ahora es compatible con Firestore.
+ * Firestore requiere que las propiedades tengan valores por defecto.
  */
 data class Product(
     val id: String = "",
     val name: String = "",
-    val category: String = "General", // Ej: Lácteos, Almacén, Limpieza
-    val currentStock: Float = 0f,    // Usamos Float por si hay "0.5 kg"
-    val minStock: Float = 1f,        // El umbral para ir al súper
-    val unit: String = "unid",       // kg, ml, unid, etc.
-    val isBought: Boolean = false    // Estado para la lista de compras
+    val category: String = "General",
+    val currentStock: Double = 0.0, // Cambiamos a Double para mayor precisión
+    val minStock: Double = 1.0,
+    val unit: String = "unid",
+    val bought: Boolean = false // Corresponde a la columna "Comprado?" de tu Excel
 )
