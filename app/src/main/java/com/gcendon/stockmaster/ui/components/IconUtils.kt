@@ -1,53 +1,107 @@
-package com.gcendon.stockmaster.ui.components
+package com.gcendon.stockmaster.ui.utils
 
-
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.*
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.graphics.vector.ImageVector
 
-/**
- * Utilidad arquitectónica para mapear categorías a iconos visuales.
- * Al estar en un archivo separado, podés actualizar los iconos de toda la app
- * desde un solo lugar.
- */
 object IconUtils {
-    fun getProductIcon(name: String, category: String): ImageVector {
-        val nameLower = name.lowercase()
+    fun getProductEmoji(name: String, category: String): String {
+        val n = name.lowercase()
 
         return when {
-            // LÁCTEOS: No hay cartón de leche, usamos la gota o el huevo
-            nameLower.contains("leche") || nameLower.contains("yogur") -> Icons.Rounded.WaterDrop
+            // --- PRIORIDAD: PALABRAS CLAVE ESPECÍFICAS (Correcciones UX) ---
 
-            // PANADERÍA: BakeryDining es un croissant/pan
-            nameLower.contains("pan") || nameLower.contains("factura") -> Icons.Rounded.BakeryDining
+            // Aceites y Condimentos
+            n.contains("oliva") -> "🫒"
+            n.contains("aceite") -> "🍶"
+            n.contains("vinagre") || n.contains("aceto") -> "🏺"
+            n.contains("sal") -> "🧂"
+            n.contains("azucar") -> "🧂" // Cambiado: de caramelo a ingrediente en polvo
+            n.contains("miel") -> "🍯"
+            n.contains("mayonesa") || n.contains("mostaza") || n.contains("salsa") -> "🥫"
+            n.contains("caldo") || n.contains("horno") || n.contains("bicarbonato") -> "📦"
 
-            // CARNE: KebabDining son como brochetas, Restaurant son cubiertos
-            nameLower.contains("carne") || nameLower.contains("pollo") -> Icons.Rounded.KebabDining
+            // Especias
+            n.contains("ajo") -> "🧄"
+            n.contains("aji") || n.contains("pimenton") || n.contains("pimienta") -> "🌶️"
+            n.contains("albahaca") || n.contains("oregano") || n.contains("provenzal") || n.contains("hierba") -> "🌿"
+            n.contains("comino") || n.contains("curcuma") || n.contains("curry") || n.contains("canela") -> "🍂"
 
-            // FRUTA/VERDURA: Eco es una hojita. No hay manzana en la librería.
-            nameLower.contains("manzana") || nameLower.contains("fruta") || nameLower.contains("verdura") -> Icons.Rounded.Eco
+            // Carnicería y Proteínas
+            n.contains("cerdo") -> "🐷"
+            n.contains("pollo") || n.contains("pechuga") -> "🍗"
+            n.contains("cuadril") || n.contains("milanesa") || n.contains("carne") -> "🥩"
+            n.contains("jamon") -> "🥓"
+            n.contains("pescado") -> "🐟"
+            n.contains("huevo") -> "🥚"
 
-            // BEBIDAS: LocalDrink es un vaso con sorbete
-            nameLower.contains("cerveza") || nameLower.contains("vino") || nameLower.contains("soda") -> Icons.Rounded.LocalDrink
+            // Lácteos y derivados
+            n.contains("leche") -> "🥛"
+            n.contains("yogurt") || n.contains("yogur") -> "🥤"
+            n.contains("queso") || n.contains("muzzarella") -> "🧀"
+            n.contains("manteca") -> "🧈"
 
-            // PASTAS / ARROZ: DinnerDining es un plato con comida
-            nameLower.contains("fideo") || nameLower.contains("arroz") -> Icons.Rounded.DinnerDining
+            // Almacén / Secos
+            n.contains("fideo") || n.contains("pasta") -> "🍝"
+            n.contains("arroz") -> "🍚"
+            n.contains("harina") || n.contains("avena") || n.contains("levadura") -> "🌾"
+            n.contains("pan") -> "🍞"
+            n.contains("galletita") -> "🍪"
+            n.contains("lenteja") || n.contains("garbanzo") -> "🍲"
+            n.contains("mani") || n.contains("almendra") || n.contains("fruto seco") || n.contains("semilla") -> "🥜"
+            n.contains("cacao") || n.contains("chocolate") -> "🍫" // Cambiado: de taza a barra
+            n.contains("cafe") -> "☕"
+            n.contains("te") -> "🍵"
+            n.contains("yerba") -> "🧉"
+            n.contains("maiz") || n.contains("pisingallo") || n.contains("choclo") -> "🍿"
 
-            // LIMPIEZA: CleaningServices es un spray
-            nameLower.contains("jabon") || nameLower.contains("detergente") -> Icons.Rounded.CleaningServices
+            // Verdulería
+            n.contains("papa") || n.contains("batata") || n.contains("boniato") -> "🥔"
+            n.contains("cebolla") -> "🧅"
+            n.contains("morron") -> "🫑"
+            n.contains("tomate") -> "🍅"
+            n.contains("limon") -> "🍋"
+            n.contains("manzana") -> "🍎"
+            n.contains("banana") -> "🍌"
+            n.contains("naranja") -> "🍊"
+            n.contains("zanahoria") -> "🥕"
+            n.contains("hoja") || n.contains("lechuga") || n.contains("acelga") -> "🥬"
+            n.contains("fruta") -> "🍎"
 
-            else -> getCategoryBackupIcon(category)
+            // Limpieza del Hogar
+            n.contains("detergente") || n.contains("jabon liquido") -> "🧼"
+            n.contains("suavizante") || n.contains("vanish") || n.contains("camellito") -> "🧺"
+            n.contains("lavandina") || n.contains("limpiador") || n.contains("cif") || n.contains("lysoform") -> "✨"
+            n.contains("antigrasa") || n.contains("blem") || n.contains("limpiavidrios") -> "🪟"
+            n.contains("trapo") || n.contains("ballerina") || n.contains("estropajo") || n.contains("esponja") -> "🧽"
+            n.contains("bolsa") -> "🛍️"
+            n.contains("film") || n.contains("aluminio") || n.contains("separador") -> "🎞️"
+
+            // Higiene Personal
+            n.contains("shampoo") || n.contains("acondicionador") || n.contains("enjuague") -> "🚿"
+            n.contains("jabon de tocador") || n.contains("glicerina") -> "🧼"
+            n.contains("dentifrico") || n.contains("cepillo") || n.contains("dentastix") -> "🪥"
+            n.contains("bucal") -> "🦷"
+            n.contains("desodorante") -> "☁️"
+            n.contains("papel higienico") || n.contains("higienico") || n.contains("rollo") -> "🧻"
+            n.contains("pañuelito") || n.contains("algodon") || n.contains("hisopo") -> "☁️"
+            n.contains("toallita") || n.contains("protector") || n.contains("tampon") -> "🌸"
+
+            // Otros / Mascotas
+            n.contains("dentastix") -> "🐕"
+
+            // --- RESPALDO POR CATEGORÍA ---
+            else -> getCategoryBackupEmoji(category)
         }
     }
 
-    private fun getCategoryBackupIcon(category: String): ImageVector {
+    private fun getCategoryBackupEmoji(category: String): String {
         return when (category) {
-            "Lácteos" -> Icons.Rounded.Egg // El huevo es lo más "lácteo" que hay
-            "Carnicería" -> Icons.Rounded.Restaurant
-            "Verdulería" -> Icons.Rounded.Eco
-            "Limpieza" -> Icons.Rounded.AutoAwesome // Da sensación de brillo/limpio
-            else -> Icons.Rounded.Inventory2
+            "Lácteos" -> "🐄"
+            "Carnicería" -> "🥩"
+            "Verdulería" -> "🥦"
+            "Almacén" -> "🛍️"
+            "Limpieza" -> "✨"
+            "Higiene" -> "🧼"
+            else -> "📦"
         }
     }
 }

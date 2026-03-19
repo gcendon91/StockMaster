@@ -20,50 +20,48 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.gcendon.stockmaster.data.Product
+import com.gcendon.stockmaster.ui.utils.IconUtils
 
 @Composable
 fun ProductCard(product: Product) {
-    // Calculamos el "semáforo" inteligente
-    val criticalThreshold = product.idealStock * 0.1 // 10%
-    val lowThreshold = product.idealStock * 0.4      // 40%
+    // Lógica del semáforo (Rojo, Amarillo, Verde)
+    val criticalThreshold = product.idealStock * 0.2
+    val lowThreshold = product.idealStock * 0.5
 
-    // Decidimos el color según los niveles
     val statusColor = when {
-        product.currentStock <= criticalThreshold -> Color.Red // Crítico
-        product.currentStock <= lowThreshold -> Color(0xFFFFC107) // Amarillo (Material 3 Amber)
+        product.currentStock <= criticalThreshold -> Color.Red
+        product.currentStock <= lowThreshold -> Color(0xFFFFC107) // Amarillo
         else -> Color(0xFF4CAF50) // Verde
     }
+
     Card(
         modifier = Modifier
             .padding(8.dp)
             .fillMaxWidth()
-            .height(160.dp), // Altura fija para que la grilla sea simétrica
-        shape = RoundedCornerShape(20.dp),
+            .height(180.dp), // Un poco más alta para que luzca el emoji
+        shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
         )
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(12.dp),
+            modifier = Modifier.fillMaxSize().padding(12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // Icono con color dinámico
-            Icon(
-                imageVector = IconUtils.getProductIcon(product.name, product.category),
-                contentDescription = null,
-                modifier = Modifier.size(42.dp),
-                tint = statusColor
+            // EL EMOJI GIGANTE
+            Text(
+                text = IconUtils.getProductEmoji(product.name, product.category),
+                fontSize = 50.sp, // Bien grande y visual
+                modifier = Modifier.padding(bottom = 8.dp)
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Nombre del producto
             Text(
                 text = product.name,
                 style = MaterialTheme.typography.titleMedium,
@@ -71,24 +69,24 @@ fun ProductCard(product: Product) {
                 overflow = TextOverflow.Ellipsis
             )
 
-            // Stock y Unidad
+            // Stock con el color del semáforo
             Text(
                 text = "${product.currentStock} ${product.unit}",
-                style = MaterialTheme.typography.bodySmall,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
                 color = statusColor
             )
 
-            // Indicador visual de categoría
+            // Badge de categoría chiquito abajo
             Surface(
                 modifier = Modifier.padding(top = 8.dp),
-                color = MaterialTheme.colorScheme.secondaryContainer,
+                color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f),
                 shape = CircleShape
             ) {
                 Text(
                     text = product.category,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 2.dp),
+                    style = MaterialTheme.typography.labelSmall
                 )
             }
         }
