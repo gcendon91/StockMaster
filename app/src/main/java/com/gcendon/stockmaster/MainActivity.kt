@@ -72,11 +72,10 @@ class MainActivity : ComponentActivity() {
                     // Lógica del Diálogo: Si el interruptor está ON, mostramos el cartel
                     if (showDialog) {
                         AddProductDialog(
-                            onDismiss = { showDialog = false }, // Apagar interruptor al cerrar
-                            onConfirm = { name, category, stock ->
-                                // Enviamos los datos al ViewModel para que los suba a la nube
-                                viewModel.addProduct(name, category, stock)
-                                showDialog = false // Cerramos el diálogo después de guardar
+                            onDismiss = { showDialog = false },
+                            onConfirm = { name, category, stock, unit ->
+                                viewModel.addProduct(name, category, stock, unit)
+                                showDialog = false
                             }
                         )
                     }

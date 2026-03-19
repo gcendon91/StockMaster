@@ -8,8 +8,9 @@ data class Product(
     val id: String = "",
     val name: String = "",
     val category: String = "General",
-    val currentStock: Double = 0.0, // Cambiamos a Double para mayor precisión
+    val currentStock: Double = 0.0,
     val minStock: Double = 1.0,
+    val idealStock: Double = 1.0,
     val unit: String = "unid",
-    val bought: Boolean = false // Corresponde a la columna "Comprado?" de tu Excel
+    val bought: Boolean = false
 )
