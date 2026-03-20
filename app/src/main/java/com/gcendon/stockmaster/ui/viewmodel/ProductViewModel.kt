@@ -19,17 +19,20 @@ class ProductViewModel : ViewModel() {
     }
 
     private fun listenToProducts() {
-        // Nos "suscribimos" a la colección "products" de Firebase
-        db.collection("products")
-            .addSnapshotListener { snapshot, error ->
-                if (error != null) return@addSnapshotListener
+        db.collection("products").addSnapshotListener { snapshot, e ->
+            if (e != null) return@addSnapshotListener
 
-                if (snapshot != null) {
-                    // Convertimos los documentos de Firebase a nuestra lista de objetos Product
-                    val list = snapshot.toObjects(Product::class.java)
-                    _products.value = list
-                }
-            }
+            val list = snapshot?.documents?.mapNotNull { doc ->
+                //Convertimos el documento a objeto Product
+                val producto = doc.toObject(Product::class.java)
+
+                // Le pedimos a Firebase el ID real del documento (doc.id)
+                // y se lo pegamos a nuestro objeto
+                producto?.copy(id = doc.id)
+            } ?: emptyList()
+
+            _products.value = list
+        }
     }
 
     fun addProduct(name: String, category: String, stock: Double, unit: String) {
@@ -41,5 +44,12 @@ class ProductViewModel : ViewModel() {
             unit = unit
         )
         db.collection("products").add(newProduct)
+    }
+
+    fun deleteMultipleProducts(productIds: Set<String>) {
+        productIds.forEach { id ->
+            db.collection("products").document(id).delete()
+                .addOnFailureListener { e -> println("Error al borrar $id: $e") }
+        }
     }
 }

@@ -9,7 +9,7 @@ data class Product(
     val name: String = "",
     val category: String = "General",
     val currentStock: Double = 0.0,
-    val minStock: Double = 1.0,
+    val minStock: Double = 0.0,
     val idealStock: Double = 1.0,
     val unit: String = "unid",
     val bought: Boolean = false
