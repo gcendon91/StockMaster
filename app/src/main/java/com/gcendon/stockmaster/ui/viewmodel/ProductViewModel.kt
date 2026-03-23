@@ -31,15 +31,21 @@ class ProductViewModel : ViewModel() {
                 producto?.copy(id = doc.id)
             } ?: emptyList()
 
-            _products.value = list
+            // Ordenamos: 1º por Categoría, 2º por Nombre
+            val listaOrdenada = list.sortedWith(
+                compareBy<Product> { it.category }.thenBy { it.name }
+            )
+
+            _products.value = listaOrdenada
         }
     }
 
-    fun addProduct(name: String, category: String, stock: Double, unit: String) {
+    fun addProduct(name: String, category: String, stock: Double, unit: String, ideal: Double) {
         val newProduct = Product(
             name = name,
             category = category,
             currentStock = stock,
+            idealStock = ideal,
             minStock = 1.0,
             unit = unit
         )

@@ -59,8 +59,8 @@ class MainActivity : ComponentActivity() {
                     if (showDialog) {
                         AddProductDialog(
                             onDismiss = { showDialog = false },
-                            onConfirm = { name, category, stock, unit ->
-                                viewModel.addProduct(name, category, stock, unit)
+                            onConfirm = { name, category, stock, unit, ideal ->
+                                viewModel.addProduct(name, category, stock, unit, ideal)
                                 showDialog = false
                             }
                         )
