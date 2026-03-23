@@ -19,15 +19,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.gcendon.stockmaster.data.Category
 
 @Composable
 fun AddProductDialog(
     onDismiss: () -> Unit,
-    onConfirm: (String, String, Double, String, Double) -> Unit
+    categories: List<Category>,
+    onConfirm: (String, String, Double, String, Double) -> Unit,
+    onAddCategory: (String) -> Unit
 ) {
     // Estos son los estados locales de lo que el usuario escribe
     var name by remember { mutableStateOf("") }
-    var selectedCategory by remember { mutableStateOf("Almacén") }
+    var selectedCategory by remember { mutableStateOf(categories.firstOrNull()?.name ?: "General") }
     var selectedUnit by remember { mutableStateOf("unid") }
     var stock by remember { mutableStateOf("") }
 

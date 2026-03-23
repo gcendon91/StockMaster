@@ -1,6 +1,7 @@
 package com.gcendon.stockmaster.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
+import com.gcendon.stockmaster.data.Category
 import com.gcendon.stockmaster.data.Product
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.firestore
@@ -14,8 +15,12 @@ class ProductViewModel : ViewModel() {
     private val _products = MutableStateFlow<List<Product>>(emptyList())
     val products: StateFlow<List<Product>> = _products.asStateFlow()
 
+    private val _categories = MutableStateFlow<List<Category>>(emptyList())
+    val categories: StateFlow<List<Category>> = _categories.asStateFlow()
+
     init {
         listenToProducts()
+        listenToCategories()
     }
 
     private fun listenToProducts() {
@@ -56,6 +61,28 @@ class ProductViewModel : ViewModel() {
         productIds.forEach { id ->
             db.collection("products").document(id).delete()
                 .addOnFailureListener { e -> println("Error al borrar $id: $e") }
+        }
+    }
+
+    private fun listenToCategories() {
+        db.collection("categories")
+            .orderBy("name")
+            .addSnapshotListener { snapshot, e ->
+                if (e != null) return@addSnapshotListener
+
+                val catList = snapshot?.documents?.mapNotNull { doc ->
+                    val cat = doc.toObject(Category::class.java)
+                    cat?.copy(id = doc.id)
+                } ?: emptyList()
+
+                _categories.value = catList
+            }
+    }
+
+    fun addCategory(name: String) {
+        if (name.isNotBlank()) {
+            val newCat = Category(name = name)
+            db.collection("categories").add(newCat)
         }
     }
 }
