@@ -65,18 +65,25 @@ class ProductViewModel : ViewModel() {
     }
 
     private fun listenToCategories() {
-        db.collection("categories")
-            .orderBy("name")
-            .addSnapshotListener { snapshot, e ->
-                if (e != null) return@addSnapshotListener
+        db.collection("categories").addSnapshotListener { snapshot, _ ->
+            val cats = snapshot?.documents?.mapNotNull { doc ->
+                doc.toObject(Category::class.java)?.copy(id = doc.id)
+            } ?: emptyList()
 
-                val catList = snapshot?.documents?.mapNotNull { doc ->
-                    val cat = doc.toObject(Category::class.java)
-                    cat?.copy(id = doc.id)
-                } ?: emptyList()
-
-                _categories.value = catList
+            if (cats.isEmpty()) {
+                // Si no hay nada, sembramos las básicas
+                seedDefaultCategories()
+            } else {
+                _categories.value = cats
             }
+        }
+    }
+
+    private fun seedDefaultCategories() {
+        val defaults = listOf("Almacén", "Lácteos", "Carnicería", "Limpieza", "Verdulería", "Otros")
+        defaults.forEach { name ->
+            addCategory(name)
+        }
     }
 
     fun addCategory(name: String) {
@@ -84,5 +91,20 @@ class ProductViewModel : ViewModel() {
             val newCat = Category(name = name)
             db.collection("categories").add(newCat)
         }
+    }
+
+    // Editar una categoría
+    fun updateCategory(category: Category, newName: String) {
+        if (newName.isNotBlank()) {
+            db.collection("categories").document(category.id)
+                .update("name", newName)
+        }
+    }
+
+    // Eliminar una categoría
+    fun deleteCategory(categoryId: String) {
+        db.collection("categories").document(categoryId).delete()
+        // Nota: Aquí podrías agregar lógica para que los productos
+        // que tenían esta categoría pasen a "Sin Categoría"
     }
 }

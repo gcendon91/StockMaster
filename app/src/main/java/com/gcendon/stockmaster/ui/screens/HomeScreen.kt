@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -34,22 +35,32 @@ import com.gcendon.stockmaster.ui.viewmodel.ProductViewModel
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-fun HomeScreen(innerPadding: PaddingValues, viewModel: ProductViewModel) {
+fun HomeScreen(innerPadding: PaddingValues, viewModel: ProductViewModel, onOpenDrawer: () -> Unit) {
     val productList by viewModel.products.collectAsState()
     var seleccionados by remember { mutableStateOf(setOf<String>()) }
     val esModoSeleccion = seleccionados.isNotEmpty()
 
     Scaffold(
         topBar = {
-            // Esta barra reemplaza a la anterior cuando seleccionamos algo
             TopAppBar(
                 title = {
                     Text(if (esModoSeleccion) "${seleccionados.size} seleccionados" else "Mi Stock Hogareño")
                 },
                 navigationIcon = {
+                    // --- ESTA ES LA LÓGICA DE INTERRUPTOR ---
                     if (esModoSeleccion) {
+                        // Si estamos seleccionando, mostramos la X
                         IconButton(onClick = { seleccionados = emptySet() }) {
-                            Icon(Icons.Default.Close, contentDescription = null)
+                            Icon(Icons.Default.Close, contentDescription = "Cerrar selección")
+                        }
+                    } else {
+                        // SI NO, mostramos el Menú para abrir el Drawer
+                        IconButton(onClick = onOpenDrawer) { // <--- ACÁ LLAMAMOS AL DRAWER
+                            Icon(
+                                imageVector = Icons.Default.Menu,
+                                contentDescription = "Abrir menú lateral",
+                                tint = Color.White // Para que combine con tu título blanco
+                            )
                         }
                     }
                 },
@@ -69,7 +80,9 @@ fun HomeScreen(innerPadding: PaddingValues, viewModel: ProductViewModel) {
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = if (esModoSeleccion) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.primary,
-                    titleContentColor = if (esModoSeleccion) MaterialTheme.colorScheme.onPrimaryContainer else Color.White
+                    titleContentColor = if (esModoSeleccion) MaterialTheme.colorScheme.onPrimaryContainer else Color.White,
+                    // Agregamos esto para que el icono del menú también sea blanco
+                    navigationIconContentColor = if (esModoSeleccion) MaterialTheme.colorScheme.onPrimaryContainer else Color.White
                 )
             )
         }
@@ -79,7 +92,7 @@ fun HomeScreen(innerPadding: PaddingValues, viewModel: ProductViewModel) {
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
                 top = paddingInterno.calculateTopPadding() + 8.dp,
-                bottom = innerPadding.calculateBottomPadding() + 80.dp,
+                bottom = paddingInterno.calculateBottomPadding() + 80.dp,
                 start = 8.dp,
                 end = 8.dp
             )
