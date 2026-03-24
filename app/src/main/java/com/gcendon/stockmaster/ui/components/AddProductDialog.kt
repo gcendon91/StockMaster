@@ -28,20 +28,23 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.gcendon.stockmaster.data.Category
+import com.gcendon.stockmaster.data.Product
 
 @Composable
 fun AddProductDialog(
+    product: Product? = null, // <--- Si es null, es NUEVO. Si tiene algo, es EDITAR.
     onDismiss: () -> Unit,
-    categories: List<Category>, // Esta es la lista que viene de Firebase
+    categories: List<Category>,
     onConfirm: (String, String, Double, String, Double) -> Unit,
-    onAddCategory: (String) -> Unit // Función para guardar una categoría nueva
+    onAddCategory: (String) -> Unit
 ) {
-    var name by remember { mutableStateOf("") }
-    // Iniciamos con la primera categoría de la lista o "General"
-    var selectedCategory by remember { mutableStateOf("") }
-    var selectedUnit by remember { mutableStateOf("unid") }
-    var stock by remember { mutableStateOf("") }
-    var idealStock by remember { mutableStateOf("") }
+    // Si 'product' no es null, usamos sus valores. Si no, vacío.
+    var name by remember { mutableStateOf(product?.name ?: "") }
+    var selectedCategory by remember { mutableStateOf(product?.category ?: "") }
+    var selectedUnit by remember { mutableStateOf(product?.unit ?: "unid") }
+    var stock by remember { mutableStateOf(product?.currentStock?.toString() ?: "") }
+    var idealStock by remember { mutableStateOf(product?.minStock?.toString() ?: "") }
+
 
     // Estado para el mini-diálogo de "Nueva Categoría"
     var showAddCategoryDialog by remember { mutableStateOf(false) }
@@ -58,7 +61,7 @@ fun AddProductDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Nuevo Producto") },
+        title = { Text(if (product == null) "Nuevo Producto" else "Editar Producto") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextField(

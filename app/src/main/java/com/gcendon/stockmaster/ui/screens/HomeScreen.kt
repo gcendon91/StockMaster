@@ -30,6 +30,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import com.gcendon.stockmaster.data.Product
+import com.gcendon.stockmaster.ui.components.AddProductDialog
 import com.gcendon.stockmaster.ui.components.ProductCard
 import com.gcendon.stockmaster.ui.viewmodel.ProductViewModel
 
@@ -37,8 +39,10 @@ import com.gcendon.stockmaster.ui.viewmodel.ProductViewModel
 @Composable
 fun HomeScreen(innerPadding: PaddingValues, viewModel: ProductViewModel, onOpenDrawer: () -> Unit) {
     val productList by viewModel.products.collectAsState()
+    val categories by viewModel.categories.collectAsState(initial = emptyList())
     var seleccionados by remember { mutableStateOf(setOf<String>()) }
     val esModoSeleccion = seleccionados.isNotEmpty()
+    var productoAEditar by remember { mutableStateOf<Product?>(null) }
 
     Scaffold(
         topBar = {
@@ -109,8 +113,9 @@ fun HomeScreen(innerPadding: PaddingValues, viewModel: ProductViewModel, onOpenD
                                     // Si estamos en modo selección, tildamos/destildamos
                                     seleccionados =
                                         if (estaMarcado) seleccionados - producto.id else seleccionados + producto.id
+                                } else {
+                                    productoAEditar = producto
                                 }
-                                // Si NO estamos en modo selección, no hace NADA (evitamos falsos clics)
                             },
                             onLongClick = {
                                 if (!esModoSeleccion) {
@@ -126,6 +131,25 @@ fun HomeScreen(innerPadding: PaddingValues, viewModel: ProductViewModel, onOpenD
                     )
                 }
             }
+        }
+        if (productoAEditar != null) {
+            AddProductDialog(
+                product = productoAEditar, // <--- Le pasamos el producto
+                onDismiss = { productoAEditar = null },
+                categories = categories,
+                onConfirm = { nombre, categoria, stock, unidad, ideal ->
+                    viewModel.updateProduct(
+                        productoAEditar!!.id,
+                        nombre,
+                        categoria,
+                        stock,
+                        unidad,
+                        ideal
+                    )
+                    productoAEditar = null
+                },
+                onAddCategory = { viewModel.addCategory(it) }
+            )
         }
     }
 }

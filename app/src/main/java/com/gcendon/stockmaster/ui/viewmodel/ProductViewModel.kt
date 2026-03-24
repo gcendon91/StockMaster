@@ -57,6 +57,28 @@ class ProductViewModel : ViewModel() {
         db.collection("products").add(newProduct)
     }
 
+    fun updateProduct(
+        id: String,
+        name: String,
+        category: String,
+        stock: Double,
+        unit: String,
+        ideal: Double
+    ) {
+        val updatedProduct = mapOf(
+            "name" to name,
+            "category" to category,
+            "currentStock" to stock,
+            "unit" to unit,
+            "minStock" to ideal //
+        )
+
+        db.collection("products").document(id)
+            .update(updatedProduct)
+            .addOnSuccessListener { println("Producto actualizado con éxito") }
+            .addOnFailureListener { e -> println("Error al actualizar: $e") }
+    }
+
     fun deleteMultipleProducts(productIds: Set<String>) {
         productIds.forEach { id ->
             db.collection("products").document(id).delete()
