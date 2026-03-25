@@ -33,8 +33,8 @@ fun ProductCard(
     estaSeleccionado: Boolean,
     modoSeleccionActivo: Boolean
 ) {
-    val critico = item.idealStock * 0.2
-    val bajo = item.idealStock * 0.5
+    val critico = item.minStock * 0.2
+    val bajo = item.minStock * 0.5
     val colorEstado = when {
         item.currentStock <= critico -> Color.Red
         item.currentStock <= bajo -> Color(0xFFFFC107)

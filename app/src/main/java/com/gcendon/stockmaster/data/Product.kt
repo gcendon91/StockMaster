@@ -7,10 +7,9 @@ package com.gcendon.stockmaster.data
 data class Product(
     val id: String = "",
     val name: String = "",
-    val category: String = "General",
+    val category: String = "",
     val currentStock: Double = 0.0,
+    val unit: String = "",
     val minStock: Double = 0.0,
-    val idealStock: Double = 1.0,
-    val unit: String = "unid",
-    val bought: Boolean = false
+    val householdId: String = ""
 )
