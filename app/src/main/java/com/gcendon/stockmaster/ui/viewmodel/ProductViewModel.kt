@@ -1,13 +1,17 @@
 package com.gcendon.stockmaster.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import com.gcendon.stockmaster.data.Category
 import com.gcendon.stockmaster.data.Product
 import com.google.firebase.Firebase
 import com.google.firebase.firestore.firestore
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 
 class ProductViewModel : ViewModel() {
     private val db = Firebase.firestore // Referencia a la base de datos
@@ -17,6 +21,10 @@ class ProductViewModel : ViewModel() {
 
     private val _categories = MutableStateFlow<List<Category>>(emptyList())
     val categories: StateFlow<List<Category>> = _categories.asStateFlow()
+
+    val shoppingList: StateFlow<List<Product>> = products.map { lista ->
+        lista.filter { it.currentStock < it.minStock }
+    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     init {
         listenToProducts()

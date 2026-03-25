@@ -50,6 +50,7 @@ import androidx.navigation.compose.rememberNavController
 import com.gcendon.stockmaster.ui.components.AddProductDialog
 import com.gcendon.stockmaster.ui.screens.CategoryScreen
 import com.gcendon.stockmaster.ui.screens.HomeScreen
+import com.gcendon.stockmaster.ui.screens.ShoppingListScreen
 import com.gcendon.stockmaster.ui.theme.StockMasterTheme
 import com.gcendon.stockmaster.ui.viewmodel.ProductViewModel
 import kotlinx.coroutines.launch
@@ -74,8 +75,7 @@ class MainActivity : ComponentActivity() {
 
             StockMasterTheme {
                 ModalNavigationDrawer(
-                    drawerState = drawerState,
-                    drawerContent = {
+                    drawerState = drawerState, drawerContent = {
                         ModalDrawerSheet(
                             // Le damos un fondo un poquito más oscuro para que contraste con la Home
                             drawerContainerColor = MaterialTheme.colorScheme.surface,
@@ -161,35 +161,55 @@ class MainActivity : ComponentActivity() {
                                 // Padding similar
                                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
                             )
+
+                            NavigationDrawerItem(
+                                icon = {
+                                    Icon(
+                                        Icons.Default.ShoppingCart, contentDescription = null
+                                    )
+                                }, label = {
+                                    Text(
+                                        "Lista de Compras", fontWeight = FontWeight.Medium
+                                    )
+                                }, selected = currentRoute == "shopping_list", onClick = {
+                                    navController.navigate("shopping_list")
+                                    scope.launch { drawerState.close() }
+                                }, modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                            )
                         }
-                    }
-                ) {
+                    }) {
                     Scaffold(
-                        modifier = Modifier.fillMaxSize(),
-                        floatingActionButton = {
+                        modifier = Modifier.fillMaxSize(), floatingActionButton = {
                             // El botón de agregar producto solo aparece en la Home
                             if (currentRoute == "home") {
                                 FloatingActionButton(onClick = { showDialog = true }) {
                                     Icon(Icons.Default.Add, contentDescription = "Agregar")
                                 }
                             }
-                        }
-                    ) { padding ->
-                        // EL NAVHOST: El corazón de la navegación
+                        }) { padding ->
                         NavHost(navController = navController, startDestination = "home") {
+                            // RUTA 1: HOME
                             composable("home") {
                                 HomeScreen(
                                     innerPadding = padding,
                                     viewModel = viewModel,
-                                    onOpenDrawer = { scope.launch { drawerState.open() } }
-                                )
+                                    onOpenDrawer = { scope.launch { drawerState.open() } },
+                                    onNavigateToShoppingList = { navController.navigate("shopping_list") })
                             }
+
+                            // RUTA 2: CATEGORÍAS
                             composable("categories") {
                                 CategoryScreen(
                                     innerPadding = padding,
                                     viewModel = viewModel,
-                                    onBack = { navController.popBackStack() }
-                                )
+                                    onBack = { navController.popBackStack() })
+                            }
+
+                            // RUTA 3: LISTA DE COMPRAS
+                            composable("shopping_list") {
+                                ShoppingListScreen(
+                                    viewModel = viewModel,
+                                    onBack = { navController.popBackStack() })
                             }
                         }
 
@@ -201,12 +221,12 @@ class MainActivity : ComponentActivity() {
                                     viewModel.addProduct(n, c, s, u, i)
                                     showDialog = false
                                 },
-                                onAddCategory = { viewModel.addCategory(it) }
-                            )
+                                onAddCategory = { viewModel.addCategory(it) })
                         }
                     }
                 }
             }
         }
     }
+
 }

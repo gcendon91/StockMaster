@@ -13,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -37,7 +38,12 @@ import com.gcendon.stockmaster.ui.viewmodel.ProductViewModel
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-fun HomeScreen(innerPadding: PaddingValues, viewModel: ProductViewModel, onOpenDrawer: () -> Unit) {
+fun HomeScreen(
+    innerPadding: PaddingValues,
+    viewModel: ProductViewModel,
+    onOpenDrawer: () -> Unit,
+    onNavigateToShoppingList: () -> Unit
+) {
     val productList by viewModel.products.collectAsState()
     val categories by viewModel.categories.collectAsState(initial = emptyList())
     var seleccionados by remember { mutableStateOf(setOf<String>()) }
@@ -69,7 +75,16 @@ fun HomeScreen(innerPadding: PaddingValues, viewModel: ProductViewModel, onOpenD
                     }
                 },
                 actions = {
-                    if (esModoSeleccion) {
+                    if (!esModoSeleccion) {
+                        IconButton(onClick = onNavigateToShoppingList) {
+                            Icon(
+                                Icons.Default.ShoppingCart,
+                                contentDescription = null,
+                                tint = Color.White
+                            )
+                        }
+                    } else {
+                        // Acá ya tenías tu botón de borrar (el tacho de basura)
                         IconButton(onClick = {
                             viewModel.deleteMultipleProducts(seleccionados)
                             seleccionados = emptySet()
