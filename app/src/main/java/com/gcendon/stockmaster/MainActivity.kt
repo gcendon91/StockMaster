@@ -372,7 +372,11 @@ class MainActivity : ComponentActivity() {
                             modifier = Modifier.fillMaxSize(), floatingActionButton = {
                                 // El botón de agregar producto solo aparece en la Home
                                 if (currentRoute == "home") {
-                                    FloatingActionButton(onClick = { showDialog = true }) {
+                                    FloatingActionButton(
+                                        onClick = { showDialog = true },
+                                        containerColor = Color(0xFF1A237E),
+                                        contentColor = Color.White
+                                    ) {
                                         Icon(Icons.Default.Add, contentDescription = "Agregar")
                                     }
                                 }

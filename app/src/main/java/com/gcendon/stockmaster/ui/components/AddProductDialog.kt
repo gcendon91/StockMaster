@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -25,6 +26,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.gcendon.stockmaster.data.Category
@@ -127,14 +129,19 @@ fun AddProductDialog(
             }
         },
         confirmButton = {
-            Button(onClick = {
-                val stockDouble = stock.toDoubleOrNull() ?: 0.0
-                val idealDouble = idealStock.toDoubleOrNull() ?: 1.0
-                if (name.isNotBlank() && selectedCategory.isNotBlank()) {
-                    onConfirm(name, selectedCategory, stockDouble, selectedUnit, idealDouble)
-                    onDismiss()
-                }
-            }) { Text("Guardar") }
+            Button(
+                onClick = {
+                    val stockDouble = stock.toDoubleOrNull() ?: 0.0
+                    val idealDouble = idealStock.toDoubleOrNull() ?: 1.0
+                    if (name.isNotBlank() && selectedCategory.isNotBlank()) {
+                        onConfirm(name, selectedCategory, stockDouble, selectedUnit, idealDouble)
+                        onDismiss()
+                    }
+                }, colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF1A237E),
+                    contentColor = Color.White
+                )
+            ) { Text("Guardar") }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("Cancelar") }
