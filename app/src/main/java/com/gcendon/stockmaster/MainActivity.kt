@@ -8,6 +8,8 @@ import androidx.activity.enableEdgeToEdge
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -16,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -58,6 +61,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -128,15 +132,20 @@ class MainActivity : ComponentActivity() {
                     ModalNavigationDrawer(
                         drawerState = drawerState, drawerContent = {
                             ModalDrawerSheet(
-                                drawerContainerColor = Color(0xFFF8F9FF),
-                                drawerShape = RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp)
+                                drawerContainerColor = Color(0xFFFDFDFF), // Un blanco casi puro pero con un toque frío
+                                drawerShape = RoundedCornerShape(
+                                    topEnd = 0.dp,
+                                    bottomEnd = 0.dp
+                                ), // Recto en los bordes queda más moderno si ocupa todo el lateral
+                                modifier = Modifier.width(320.dp) // Un ancho estándar pro
                             ) {
                                 val currentUser = FirebaseAuth.getInstance().currentUser
 
-                                // 1. ENCABEZADO CON GRADIENTE
-                                Column(
+                                // 1. ENCABEZADO: Ahora con el fondo de la cocina pero muy desenfocado (o el gradiente pro)
+                                Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
+                                        .height(200.dp)
                                         .background(
                                             brush = androidx.compose.ui.graphics.Brush.verticalGradient(
                                                 colors = listOf(
@@ -145,122 +154,113 @@ class MainActivity : ComponentActivity() {
                                                 )
                                             )
                                         )
-                                        .padding(
-                                            top = 48.dp,
-                                            start = 24.dp,
-                                            end = 24.dp,
-                                            bottom = 24.dp
-                                        )
                                 ) {
-                                    Surface(
-                                        modifier = Modifier.size(64.dp),
-                                        shape = CircleShape,
-                                        color = Color.White.copy(alpha = 0.2f),
-                                        border = BorderStroke(2.dp, Color.White)
+                                    // Podrías poner una imagen de fondo aquí también con opacidad baja
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .padding(24.dp),
+                                        verticalArrangement = Arrangement.Bottom
                                     ) {
-                                        Icon(
-                                            Icons.Default.AccountCircle,
-                                            contentDescription = null,
-                                            modifier = Modifier
-                                                .fillMaxSize()
-                                                .padding(4.dp),
-                                            tint = Color.White
+                                        Surface(
+                                            modifier = Modifier.size(72.dp),
+                                            shape = CircleShape,
+                                            color = Color.White.copy(alpha = 0.2f),
+                                            border = BorderStroke(2.dp, Color.White)
+                                        ) {
+                                            // Si el usuario tiene foto de Google, la mostramos. Si no, el ícono.
+                                            Icon(
+                                                Icons.Default.AccountCircle,
+                                                contentDescription = null,
+                                                modifier = Modifier
+                                                    .fillMaxSize()
+                                                    .padding(4.dp),
+                                                tint = Color.White
+                                            )
+                                        }
+                                        Spacer(modifier = Modifier.height(12.dp))
+                                        Text(
+                                            text = currentUser?.displayName ?: "Usuario Master",
+                                            style = typography.titleLarge,
+                                            color = Color.White,
+                                            fontWeight = FontWeight.Black,
+                                            letterSpacing = 1.sp
+                                        )
+                                        Text(
+                                            text = currentUser?.email ?: "",
+                                            style = typography.bodySmall,
+                                            color = Color.White.copy(alpha = 0.6f)
                                         )
                                     }
-                                    Spacer(modifier = Modifier.height(16.dp))
-                                    Text(
-                                        text = currentUser?.displayName ?: "Usuario",
-                                        style = typography.headlineSmall,
-                                        color = Color.White,
-                                        fontWeight = FontWeight.ExtraBold
-                                    )
-                                    Text(
-                                        text = currentUser?.email ?: "",
-                                        style = typography.bodySmall,
-                                        color = Color.White.copy(alpha = 0.7f)
-                                    )
                                 }
 
                                 Spacer(modifier = Modifier.height(24.dp))
 
-                                // 2. SECCIÓN "TU HOGAR" (Corregida)
-                                Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-                                    Text(
-                                        text = "TU HOGAR",
-                                        style = typography.labelLarge,
-                                        color = Color.Gray,
-                                        modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
-                                    )
+                                // 2. SECCIÓN "TU HOGAR": Estilo Tarjeta Glass
+                                Text(
+                                    text = "GESTIÓN DE HOGAR",
+                                    style = typography.labelLarge,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color.LightGray,
+                                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
+                                )
 
-                                    Surface(
-                                        color = Color.White,
-                                        tonalElevation = 2.dp,
-                                        shadowElevation = 2.dp,
-                                        shape = RoundedCornerShape(16.dp),
-                                        modifier = Modifier.fillMaxWidth()
+                                Surface(
+                                    modifier = Modifier
+                                        .padding(horizontal = 16.dp)
+                                        .fillMaxWidth(),
+                                    color = Color(0xFFF5F6FA),
+                                    shape = RoundedCornerShape(20.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(16.dp),
+                                        verticalAlignment = Alignment.CenterVertically
                                     ) {
-                                        Row(
-                                            modifier = Modifier.padding(16.dp),
-                                            verticalAlignment = Alignment.CenterVertically // Centra el ícono con el texto
-                                        ) {
-                                            Column(modifier = Modifier.weight(1f)) { // Empuja el ícono a la derecha
-                                                Text(
-                                                    "Código de invitación",
-                                                    style = typography.labelSmall,
-                                                    color = Color.Gray
-                                                )
-                                                Text(
-                                                    text = viewModel.inviteCode ?: "Generando...",
-                                                    style = typography.titleMedium, // Un poco más grande
-                                                    fontWeight = FontWeight.Bold,
-                                                    color = Color(0xFF1A237E)
-                                                )
-                                            }
-
-                                            IconButton(
-                                                onClick = {
-                                                    viewModel.inviteCode?.let { code ->
-                                                        clipboardManager.setText(
-                                                            androidx.compose.ui.text.AnnotatedString(
-                                                                code
-                                                            )
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                "Código de invitación",
+                                                style = typography.labelSmall,
+                                                color = Color.Gray
+                                            )
+                                            Text(
+                                                text = viewModel.inviteCode ?: "Generando...",
+                                                style = typography.headlineSmall,
+                                                fontWeight = FontWeight.Black,
+                                                color = Color(0xFF1A237E)
+                                            )
+                                        }
+                                        IconButton(
+                                            onClick = {
+                                                viewModel.inviteCode?.let { code ->
+                                                    clipboardManager.setText(
+                                                        androidx.compose.ui.text.AnnotatedString(
+                                                            code
                                                         )
-                                                        android.widget.Toast.makeText(
-                                                            context,
-                                                            "Copiado: $code",
-                                                            android.widget.Toast.LENGTH_SHORT
-                                                        ).show()
-                                                    }
-                                                },
-                                                modifier = Modifier
-                                                    .background(
-                                                        Color(0xFFE8EAF6),
-                                                        CircleShape
                                                     )
-                                                    .size(36.dp)
-                                            ) {
-                                                Icon(
-                                                    imageVector = Icons.Default.ContentCopy,
-                                                    contentDescription = "Copiar",
-                                                    tint = Color(0xFF1A237E),
-                                                    modifier = Modifier.size(18.dp)
-                                                )
-                                            }
+                                                    android.widget.Toast.makeText(
+                                                        context,
+                                                        "¡Código copiado!",
+                                                        android.widget.Toast.LENGTH_SHORT
+                                                    ).show()
+                                                }
+                                            },
+                                            modifier = Modifier
+                                                .background(Color.White, CircleShape)
+                                                .size(40.dp)
+                                        ) {
+                                            Icon(
+                                                Icons.Default.ContentCopy,
+                                                null,
+                                                tint = Color(0xFF1A237E),
+                                                modifier = Modifier.size(20.dp)
+                                            )
                                         }
                                     }
                                 }
 
-                                Spacer(modifier = Modifier.height(24.dp))
+                                Spacer(modifier = Modifier.height(32.dp))
 
-                                // Separador sutil
-                                androidx.compose.material3.HorizontalDivider(
-                                    modifier = Modifier.padding(horizontal = 20.dp),
-                                    color = Color.LightGray.copy(alpha = 0.4f)
-                                )
-
-                                Spacer(modifier = Modifier.height(16.dp))
-
-                                // 3. ITEMS DE NAVEGACIÓN
+                                // 3. MENÚ DE NAVEGACIÓN: Con más aire y mejores íconos
                                 val items = listOf(
                                     Triple("Inventario", Icons.Default.List, "home"),
                                     Triple("Categorías", Icons.Default.Settings, "categories"),
@@ -274,11 +274,18 @@ class MainActivity : ComponentActivity() {
                                 items.forEach { (label, icon, route) ->
                                     val isSelected = currentRoute == route
                                     NavigationDrawerItem(
-                                        icon = { Icon(icon, null) },
+                                        icon = {
+                                            Icon(
+                                                icon,
+                                                null,
+                                                modifier = Modifier.size(24.dp)
+                                            )
+                                        },
                                         label = {
                                             Text(
-                                                label,
-                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                                                label.uppercase(),
+                                                fontWeight = if (isSelected) FontWeight.Black else FontWeight.Medium,
+                                                letterSpacing = 1.sp
                                             )
                                         },
                                         selected = isSelected,
@@ -295,30 +302,38 @@ class MainActivity : ComponentActivity() {
                                             selectedTextColor = Color(0xFF1A237E),
                                             selectedIconColor = Color(0xFF1A237E),
                                             unselectedContainerColor = Color.Transparent,
+                                            unselectedTextColor = Color.Gray,
                                             unselectedIconColor = Color.Gray
                                         ),
                                         modifier = Modifier.padding(
-                                            horizontal = 12.dp,
-                                            vertical = 2.dp
+                                            horizontal = 16.dp,
+                                            vertical = 4.dp
                                         )
                                     )
                                 }
 
-                                Spacer(modifier = Modifier.weight(1f)) // Espacio flexible
+                                Spacer(modifier = Modifier.weight(1f))
 
-                                // 4. ACCIONES DE PIE
+                                // 4. PIE DE PÁGINA: Acciones críticas
+                                androidx.compose.material3.HorizontalDivider(
+                                    modifier = Modifier.padding(
+                                        horizontal = 24.dp
+                                    ), color = Color.LightGray.copy(alpha = 0.3f)
+                                )
+
                                 NavigationDrawerItem(
                                     icon = {
                                         Icon(
                                             Icons.Default.Add,
                                             null,
-                                            tint = Color(0xFF4CAF50)
+                                            tint = Color(0xFF43A047)
                                         )
                                     },
                                     label = {
                                         Text(
-                                            "Unirse a otro Hogar",
-                                            color = Color(0xFF4CAF50)
+                                            "UNIRSE A OTRO HOGAR",
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color(0xFF43A047)
                                         )
                                     },
                                     selected = false,
@@ -326,23 +341,29 @@ class MainActivity : ComponentActivity() {
                                         scope.launch { drawerState.close() }
                                         showJoinDialog = true
                                     },
-                                    modifier = Modifier.padding(horizontal = 12.dp)
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                                 )
-
                                 NavigationDrawerItem(
                                     icon = {
                                         Icon(
                                             Icons.Default.ExitToApp,
                                             null,
-                                            tint = Color.Gray
+                                            tint = Color.LightGray
                                         )
                                     },
-                                    label = { Text("Cerrar Sesión", color = Color.Gray) },
+                                    label = {
+                                        Text(
+                                            "CERRAR SESIÓN",
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color.LightGray
+                                        )
+                                    },
                                     selected = false,
                                     onClick = { auth.signOut() },
                                     modifier = Modifier.padding(
-                                        horizontal = 12.dp,
-                                        vertical = 12.dp
+                                        start = 16.dp,
+                                        end = 16.dp,
+                                        bottom = 24.dp
                                     )
                                 )
                             }
