@@ -37,6 +37,9 @@ class ProductViewModel : ViewModel() {
         lista.filter { it.currentStock < it.minStock }
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
+    var inviteCode by mutableStateOf<String?>(null)
+        private set
+
     init {
         auth.currentUser?.uid?.let { uid ->
             setupUserAndHousehold(uid)
@@ -44,30 +47,11 @@ class ProductViewModel : ViewModel() {
         listenToCategories()
     }
 
-    private fun setupUserAndHousehold(uid: String) {
-        val userRef = db.collection("users").document(uid)
-
-        userRef.get().addOnSuccessListener { doc ->
-            if (doc.exists()) {
-                // Usuario viejo: usamos su ID de casa guardado
-                householdId = doc.getString("householdId")
-                listenToProducts() // Ahora que tenemos el ID, cargamos los productos
-            } else {
-                // Usuario nuevo: su UID será su primer código de casa
-                val initialData = mapOf("householdId" to uid)
-                userRef.set(initialData).addOnSuccessListener {
-                    householdId = uid
-                    listenToProducts()
-                }
-            }
-        }
-    }
 
     private fun listenToProducts() {
         val hid = householdId ?: return
 
-        db.collection("products")
-            .whereEqualTo("householdId", hid)
+        db.collection("products").whereEqualTo("householdId", hid)
             .addSnapshotListener { snapshot, e ->
                 if (e != null) return@addSnapshotListener
 
@@ -165,61 +149,148 @@ class ProductViewModel : ViewModel() {
         // que tenían esta categoría pasen a "Sin Categoría"
     }
 
-    fun signInWithGoogle(idToken: String) {
+    fun signInWithGoogle(idToken: String, onResult: (String?) -> Unit) {
         val credential = GoogleAuthProvider.getCredential(idToken, null)
         auth.signInWithCredential(credential).addOnSuccessListener { result ->
-            val uid = result.user?.uid
-            if (uid != null) {
-                setupUserAndHousehold(uid) // <--- Vinculamos al usuario apenas entra
-            }
-            Log.d("AUTH", "Login exitoso")
-        }.addOnFailureListener { e ->
-            Log.e("AUTH", "Error de login: ${e.message}")
+            val uid = result.user?.uid ?: ""
+            setupUserAndHousehold(uid)
+            onResult(null) // Éxito
+        }.addOnFailureListener { exception ->
+            onResult(mapFirebaseError(exception))
         }
     }
 
-    fun joinHousehold(newId: String, onResult: (Boolean, String) -> Unit) {
+    fun joinHousehold(shortCode: String, onResult: (Boolean, String) -> Unit) {
         val uid = auth.currentUser?.uid ?: return
+        val codeUpper = shortCode.uppercase().trim()
 
-        // 1. PRIMERO VALIDAMOS: ¿Existe algún usuario que use este ID de hogar?
-        db.collection("users")
-            .whereEqualTo("householdId", newId)
-            .get()
+        // 1. Buscamos el documento que se llama como el código (ej: "A8J3K2")
+        db.collection("invitations").document(codeUpper).get().addOnSuccessListener { doc ->
+            if (doc.exists()) {
+                // 2. Si existe, sacamos el ID real de la casa
+                val realId = doc.getString("householdId") ?: ""
+
+                // 3. Actualizamos el perfil del usuario con ese ID real
+                db.collection("users").document(uid).update("householdId", realId)
+                    .addOnSuccessListener {
+                        this.householdId = realId
+                        fetchOrCreateInviteCode() // Actualizamos el código que vemos
+                        listenToProducts()        // Cargamos los productos nuevos
+                        onResult(true, "¡Te uniste con éxito!")
+                    }
+            } else {
+                onResult(false, "El código no existe o es incorrecto.")
+            }
+        }.addOnFailureListener {
+            onResult(false, "Error de conexión: ${it.message}")
+        }
+    }
+
+    fun loginWithEmail(e: String, p: String, onResult: (String?) -> Unit) {
+        if (e.isBlank() || p.isBlank()) {
+            onResult("Por favor, completa los campos")
+            return
+        }
+        auth.signInWithEmailAndPassword(e.trim(), p.trim()).addOnSuccessListener {
+            onResult(null)
+        }.addOnFailureListener { exception ->
+            // Llamamos al traductor pasándole la excepción completa
+            val mensajeAmigable = mapFirebaseError(exception)
+            onResult(mensajeAmigable)
+        }
+    }
+
+    fun registerWithEmail(e: String, p: String, onResult: (String?) -> Unit) {
+        if (e.isBlank() || p.isBlank()) {
+            onResult("Por favor, completa los campos")
+            return
+        }
+        auth.createUserWithEmailAndPassword(e.trim(), p.trim()).addOnSuccessListener { result ->
+            val uid = result.user?.uid ?: ""
+            // Creamos el perfil inicial
+            val userData = hashMapOf(
+                "email" to e.trim(), "householdId" to uid // Su propia casa por defecto
+            )
+            db.collection("users").document(uid).set(userData)
+                .addOnSuccessListener { onResult(null) }
+                .addOnFailureListener { onResult("Error al crear perfil en base de datos") }
+        }.addOnFailureListener { exception ->
+            // Llamamos al traductor pasándole la excepción completa
+            val mensajeAmigable = mapFirebaseError(exception)
+            onResult(mensajeAmigable)
+        }
+    }
+
+    private fun mapFirebaseError(exception: Exception): String {
+        val errorCode = (exception as? com.google.firebase.auth.FirebaseAuthException)?.errorCode
+
+        return when (errorCode) {
+            // Capturamos todas las variantes de credenciales mal puestas
+            "auth/invalid-credential", "ERROR_INVALID_CREDENTIAL", "invalid-credential" -> "El email o la contraseña son incorrectos."
+
+            "auth/invalid-email", "ERROR_INVALID_EMAIL" -> "El formato del email no es válido."
+
+            "auth/user-not-found", "ERROR_USER_NOT_FOUND" -> "No encontramos ninguna cuenta con ese email."
+
+            "auth/wrong-password", "ERROR_WRONG_PASSWORD" -> "La contraseña no coincide."
+
+            "auth/email-already-in-use", "ERROR_EMAIL_ALREADY_IN_USE" -> "Este email ya está registrado."
+
+            "auth/weak-password", "ERROR_WEAK_PASSWORD" -> "La clave es muy corta (mínimo 6 caracteres)."
+
+            "auth/network-request-failed" -> "Sin conexión a internet."
+
+            // El "Atrapalotodo" amigable: Si no conocemos el error, no le mostramos el código raro
+            else -> "No pudimos iniciar sesión. Verificá tus datos e intentá de nuevo."
+        }
+    }
+
+    fun fetchOrCreateInviteCode() {
+        val hid = householdId ?: return
+
+        // Buscamos si este hogar ya tiene un código generado
+        db.collection("invitations").whereEqualTo("householdId", hid).get()
             .addOnSuccessListener { snapshot ->
                 if (!snapshot.isEmpty) {
-                    // 2. SI EXISTE: Recién ahí actualizamos nuestro perfil
-                    db.collection("users").document(uid)
-                        .update("householdId", newId)
-                        .addOnSuccessListener {
-                            this.householdId = newId
-                            listenToProducts()
-                            onResult(true, "¡Te uniste con éxito!")
-                        }
+                    // Ya existe, lo guardamos en la variable para el Drawer
+                    inviteCode = snapshot.documents[0].id
                 } else {
-                    // 3. NO EXISTE: Avisamos que el código es cualquiera
-                    onResult(false, "El código ingresado no existe.")
+                    // No existe, creamos uno nuevo
+                    val newShortCode =
+                        (1..6).map { (('A'..'Z') + ('0'..'9')).random() }.joinToString("")
+                    val data = hashMapOf(
+                        "householdId" to hid, "createdAt" to com.google.firebase.Timestamp.now()
+                    )
+                    db.collection("invitations").document(newShortCode).set(data)
+                        .addOnSuccessListener { inviteCode = newShortCode }
                 }
             }
-            .addOnFailureListener {
-                onResult(false, "Error de conexión: ${it.message}")
+    }
+
+    fun setupUserAndHousehold(uid: String) {
+        val userRef = db.collection("users").document(uid)
+
+        userRef.get().addOnSuccessListener { doc ->
+            if (doc.exists()) {
+                // Usuario ya registrado: cargamos su casa
+                householdId = doc.getString("householdId")
+                fetchOrCreateInviteCode() // Buscamos su código de 6 letras
+                listenToProducts()
+            } else {
+                // Usuario nuevo (Email o Google): le creamos su casa inicial
+                val email = auth.currentUser?.email
+                val initialData = mapOf(
+                    "email" to email,
+                    "householdId" to uid,
+                    "createdAt" to com.google.firebase.Timestamp.now()
+                )
+                userRef.set(initialData).addOnSuccessListener {
+                    householdId = uid
+                    fetchOrCreateInviteCode()
+                    listenToProducts()
+                }
             }
+        }
     }
 
-    fun loginWithEmail(email: String, pass: String) {
-        if (email.isEmpty() || pass.isEmpty()) return
-        auth.signInWithEmailAndPassword(email, pass)
-            .addOnSuccessListener { Log.d("AUTH", "Login OK") }
-            .addOnFailureListener { Log.e("AUTH", "Login Error: ${it.message}") }
-    }
-
-    fun registerWithEmail(email: String, pass: String) {
-        if (email.isEmpty() || pass.isEmpty()) return
-        auth.createUserWithEmailAndPassword(email, pass)
-            .addOnSuccessListener { Log.d("AUTH", "Registro OK") }
-            .addOnFailureListener { Log.e("AUTH", "Registro Error: ${it.message}") }
-    }
-
-    fun loginWithGoogle() {
-        Log.d("AUTH", "Google Login Clicked")
-    }
 }

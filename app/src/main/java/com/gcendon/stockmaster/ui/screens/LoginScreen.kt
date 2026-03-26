@@ -1,5 +1,6 @@
 package com.gcendon.stockmaster.ui.screens
 
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -15,17 +16,20 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -33,20 +37,57 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.gcendon.stockmaster.R
 import com.gcendon.stockmaster.ui.viewmodel.ProductViewModel
+import kotlinx.coroutines.launch
 
 @Composable
 fun LoginScreen(viewModel: ProductViewModel) {
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var isRegistering by remember { mutableStateOf(false) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+    val credentialManager = androidx.credentials.CredentialManager.create(context)
+
+    fun handleGoogleSignIn() {
+        val googleIdOption =
+            com.google.android.libraries.identity.googleid.GetGoogleIdOption.Builder()
+                .setFilterByAuthorizedAccounts(false)
+                .setServerClientId("776569543507-kackuq8mm4lijob2kj9c3k20lhc476hj.apps.googleusercontent.com")
+                .setAutoSelectEnabled(true)
+                .build()
+
+        val request = androidx.credentials.GetCredentialRequest.Builder()
+            .addCredentialOption(googleIdOption)
+            .build()
+
+        scope.launch {
+            try {
+                val result = credentialManager.getCredential(context = context, request = request)
+                val googleIdTokenCredential =
+                    com.google.android.libraries.identity.googleid.GoogleIdTokenCredential.createFrom(
+                        result.credential.data
+                    )
+                val idToken = googleIdTokenCredential.idToken
+
+                viewModel.signInWithGoogle(idToken) { error ->
+                    if (error != null) errorMessage = error
+                }
+            } catch (e: Exception) {
+                errorMessage = "Error al conectar con Google"
+            }
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
+
         // 1. FONDO (Luminoso como te gustó)
         Image(
             painter = painterResource(id = R.drawable.bg_login),
@@ -56,9 +97,11 @@ fun LoginScreen(viewModel: ProductViewModel) {
         )
 
         // Capa oscura sutil (0.4f)
-        Box(modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.4f)))
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.4f))
+        )
 
         Column(
             modifier = Modifier
@@ -89,6 +132,7 @@ fun LoginScreen(viewModel: ProductViewModel) {
             // --- INPUTS REFORZADOS (Estilo Glassmorphism Claro) ---
             OutlinedTextField(
                 value = email,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 onValueChange = { email = it },
                 placeholder = { Text("Email", color = Color.White.copy(alpha = 0.7f)) },
                 modifier = Modifier
@@ -137,17 +181,58 @@ fun LoginScreen(viewModel: ProductViewModel) {
                     unfocusedTextColor = Color.White
                 )
             )
-
+            if (errorMessage != null) {
+                Surface(
+                    color = Color(0xFFD32F2F).copy(alpha = 0.8f), // Rojo fuerte pero integrado
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, Color.White.copy(alpha = 0.5f)),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 16.dp)
+                        .animateContentSize() // Para que aparezca con suavidad
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            painter = painterResource(id = android.R.drawable.stat_notify_error),
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = errorMessage!!,
+                            color = Color.White,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Start
+                        )
+                    }
+                }
+            }
             // --- BOTÓN PRINCIPAL (Sutil) ---
             Button(
-                onClick = { /* Lógica */ },
+                onClick = {
+                    errorMessage = null
+
+                    if (isRegistering) {
+                        viewModel.registerWithEmail(email, password) { error ->
+                            if (error != null) errorMessage = error
+                        }
+                    } else {
+                        viewModel.loginWithEmail(email, password) { error ->
+                            if (error != null) errorMessage = error
+                        }
+                    }
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.White.copy(alpha = 0.2f),
-                    contentColor = Color.White
+                    containerColor = Color.White.copy(alpha = 0.2f), contentColor = Color.White
                 ),
                 border = BorderStroke(1.dp, Color.White.copy(alpha = 0.5f))
             ) {
@@ -167,16 +252,17 @@ fun LoginScreen(viewModel: ProductViewModel) {
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // --- GOOGLE BUTTON (Impecable en blanco) ---
             Button(
-                onClick = { viewModel.loginWithGoogle() },
+                onClick = {
+                    errorMessage = null
+                    handleGoogleSignIn()
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(56.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.White,
-                    contentColor = Color.Black
+                    containerColor = Color.White, contentColor = Color.Black
                 ),
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
             ) {
