@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
+
 class ProductViewModel : ViewModel() {
     private val db = Firebase.firestore // Referencia a la base de datos
     private val auth = FirebaseAuth.getInstance()
@@ -202,5 +203,23 @@ class ProductViewModel : ViewModel() {
             .addOnFailureListener {
                 onResult(false, "Error de conexión: ${it.message}")
             }
+    }
+
+    fun loginWithEmail(email: String, pass: String) {
+        if (email.isEmpty() || pass.isEmpty()) return
+        auth.signInWithEmailAndPassword(email, pass)
+            .addOnSuccessListener { Log.d("AUTH", "Login OK") }
+            .addOnFailureListener { Log.e("AUTH", "Login Error: ${it.message}") }
+    }
+
+    fun registerWithEmail(email: String, pass: String) {
+        if (email.isEmpty() || pass.isEmpty()) return
+        auth.createUserWithEmailAndPassword(email, pass)
+            .addOnSuccessListener { Log.d("AUTH", "Registro OK") }
+            .addOnFailureListener { Log.e("AUTH", "Registro Error: ${it.message}") }
+    }
+
+    fun loginWithGoogle() {
+        Log.d("AUTH", "Google Login Clicked")
     }
 }
