@@ -31,21 +31,23 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme.typography
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.NavigationDrawerItemDefaults
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TextField
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -420,20 +422,25 @@ class MainActivity : ComponentActivity() {
                             if (showJoinDialog) {
                                 JoinHouseholdDialog(
                                     onDismiss = { showJoinDialog = false },
-                                    onJoin = { nuevoCodigo ->
-                                        // Usamos la versión con validación que te pasé antes
+                                    onJoin = { nuevoCodigo, alTerminar -> // Recibimos el callback 'alTerminar'
                                         viewModel.joinHousehold(nuevoCodigo) { success, mensaje ->
-                                            // Mostramos el Toast (el cartelito negro) con el resultado
+                                            // 1. Avisamos al diálogo que deje de cargar (sea éxito o error)
+                                            alTerminar()
+
+                                            // 2. Mostramos el mensaje (Toast)
                                             android.widget.Toast.makeText(
-                                                context, mensaje, android.widget.Toast.LENGTH_SHORT
+                                                context,
+                                                mensaje,
+                                                android.widget.Toast.LENGTH_SHORT
                                             ).show()
 
+                                            // 3. Si fue exitoso, cerramos el diálogo
                                             if (success) {
-                                                showJoinDialog =
-                                                    false // Solo cerramos si el código era real
+                                                showJoinDialog = false
                                             }
                                         }
-                                    })
+                                    }
+                                )
                             }
                         }
                     }
@@ -445,27 +452,56 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun JoinHouseholdDialog(onDismiss: () -> Unit, onJoin: (String) -> Unit) {
+fun JoinHouseholdDialog(
+    onDismiss: () -> Unit,
+    onJoin: (String, onResult: () -> Unit) -> Unit // Agregamos un callback de finalización
+) {
     var code by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(false) }
 
-    AlertDialog(onDismissRequest = onDismiss, title = { Text("Unirse a un Hogar") }, text = {
-        Column {
-            Text("Pegá el código del hogar:")
-            TextField(
-                value = code,
-                onValueChange = { code = it },
-                placeholder = { Text("Ej: abc123def...") },
-                modifier = Modifier.padding(top = 8.dp),
-                singleLine = true
-            )
+    AlertDialog(
+        onDismissRequest = { if (!isLoading) onDismiss() },
+        title = { Text("Unirse a un Hogar") },
+        text = {
+            Column {
+                Text("Ingresá el código de 6 caracteres:")
+                OutlinedTextField(
+                    value = code,
+                    onValueChange = { if (it.length <= 6) code = it.uppercase() },
+                    placeholder = { Text("Ej: A8J3K2") },
+                    modifier = Modifier
+                        .padding(top = 8.dp)
+                        .fillMaxWidth(),
+                    singleLine = true,
+                    enabled = !isLoading // Deshabilitar mientras carga
+                )
+                if (isLoading) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    isLoading = true
+                    // Llamamos a unJoin y le pasamos qué hacer cuando termine
+                    onJoin(code) {
+                        isLoading = false // <--- ESTO es lo que lo destraba si falla
+                    }
+                },
+                enabled = code.length == 6 && !isLoading,
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A237E))
+            ) {
+                Text(if (isLoading) "Verificando..." else "Unirse")
+            }
+        },
+        dismissButton = {
+            // El botón cancelar ahora solo se oculta si está cargando,
+            // pero si falla, vuelve a aparecer
+            if (!isLoading) {
+                TextButton(onClick = onDismiss) { Text("Cancelar") }
+            }
         }
-    }, confirmButton = {
-        Button(
-            onClick = { if (code.isNotBlank()) onJoin(code.trim()) }, enabled = code.isNotBlank()
-        ) {
-            Text("Unirse")
-        }
-    }, dismissButton = {
-        TextButton(onClick = onDismiss) { Text("Cancelar") }
-    })
+    )
 }
