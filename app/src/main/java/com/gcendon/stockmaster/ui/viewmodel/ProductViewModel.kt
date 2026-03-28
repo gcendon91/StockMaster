@@ -293,4 +293,16 @@ class ProductViewModel : ViewModel() {
         }
     }
 
+    fun purchaseProduct(product: Product, cantidadComprada: Double) {
+        auth.currentUser?.uid ?: return
+
+        // El nuevo stock es lo que ya tenías + lo que acabás de comprar
+        val nuevoStock = product.currentStock + cantidadComprada
+
+        db.collection("products").document(product.id).update("currentStock", nuevoStock)
+            .addOnSuccessListener {
+                // Se actualiza solo en la lista
+            }
+    }
+
 }

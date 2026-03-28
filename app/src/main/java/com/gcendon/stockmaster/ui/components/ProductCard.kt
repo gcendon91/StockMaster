@@ -33,31 +33,31 @@ import com.gcendon.stockmaster.ui.utils.IconUtils
 
 @Composable
 fun ProductCard(
-    item: Product,
-    estaSeleccionado: Boolean,
-    modoSeleccionActivo: Boolean
+    item: Product, estaSeleccionado: Boolean, modoSeleccionActivo: Boolean
 ) {
-    // Lógica de colores de stock (Mantenemos tu lógica impecable)
-    val critico = item.minStock * 0.2
-    val bajo = item.minStock * 0.5
     val colorEstado = when {
-        item.currentStock <= critico -> Color(0xFFE53935)
-        item.currentStock <= bajo -> Color(0xFFFFA000)
+        // ROJO: Menos del 10% del mínimo (Prácticamente nada)
+        item.currentStock <= item.minStock * 0.1 -> Color(0xFFE53935)
+
+        // AMARILLO: Menos del mínimo (Ya hay que comprar)
+        item.currentStock < item.minStock -> Color(0xFFFFA000)
+
+        // VERDE: Igual o mayor al mínimo (Estado ideal)
         else -> Color(0xFF43A047)
     }
+
     val stockFormateado = "%.1f".format(item.currentStock)
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .height(170.dp), // <--- CAMBIO 1: Altura reducida (de 190 a 170)
+            .height(170.dp),
         shape = RoundedCornerShape(20.dp), // Un poquito menos redondeado para estética compacta
         elevation = CardDefaults.cardElevation(
             defaultElevation = if (estaSeleccionado) 10.dp else 4.dp // Elevación sutil
         ),
         border = if (estaSeleccionado) BorderStroke(
-            2.dp,
-            Color(0xFF1A237E)
+            2.dp, Color(0xFF1A237E)
         ) else null,
         colors = CardDefaults.cardColors(
             containerColor = if (estaSeleccionado) Color(0xFFE8EAF6) else Color.White
@@ -130,8 +130,7 @@ fun ProductCard(
 
                 // Categoría como un "Badge" más limpio y compacto
                 Surface(
-                    color = Color(0xFFF5F5F5),
-                    shape = RoundedCornerShape(6.dp) // Bordes más finos
+                    color = Color(0xFFF5F5F5), shape = RoundedCornerShape(6.dp) // Bordes más finos
                 ) {
                     Text(
                         text = item.category,
