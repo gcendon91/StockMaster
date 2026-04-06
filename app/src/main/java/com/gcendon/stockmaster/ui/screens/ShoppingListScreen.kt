@@ -17,10 +17,16 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AddShoppingCart
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Label
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -31,11 +37,15 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -46,8 +56,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -63,11 +75,30 @@ fun ShoppingListScreen(
     onBack: () -> Unit
 ) {
     val itemsParaComprar by viewModel.shoppingList.collectAsState()
+    val focusManager = LocalFocusManager.current
+    var searchQuery by remember { mutableStateOf("") }
+    var selectedCategory by remember { mutableStateOf("Todas") }
+
+    var showSheet by remember { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState()
 
     // ESTADOS PARA EL DIÁLOGO DE COMPRA RÁPIDA
     var showDialog by remember { mutableStateOf(false) }
     var productoSeleccionado by remember { mutableStateOf<Product?>(null) }
     var cantidadAComprar by remember { mutableStateOf("") }
+
+    val categoriasDisponibles = remember(itemsParaComprar) {
+        listOf("Todas") + itemsParaComprar.map { it.category }.distinct().sorted()
+    }
+
+    val itemsFiltrados = remember(searchQuery, selectedCategory, itemsParaComprar) {
+        itemsParaComprar.filter { prod ->
+            val matchNombre = prod.name.contains(searchQuery, ignoreCase = true)
+            val matchCategoria =
+                if (selectedCategory == "Todas") true else prod.category == selectedCategory
+            matchNombre && matchCategoria
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         // 1. FONDO DE PANTALLA
@@ -104,94 +135,131 @@ fun ShoppingListScreen(
                 )
             }
         ) { innerPadding ->
-            // 2. CONTENEDOR PRINCIPAL (Usa el padding del Scaffold)
-            Box(
+            // CONTENEDOR VERTICAL (Buscador + Lista)
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
             ) {
-                if (itemsParaComprar.isEmpty()) {
-                    // ESTADO: TODO COMPRADO
-                    Column(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.Center,
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.CheckCircle,
-                            contentDescription = null,
-                            modifier = Modifier.size(100.dp),
-                            tint = Color(0xFF43A047).copy(alpha = 0.6f)
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
+                // --- BARRA DE BÚSQUEDA (FIJA) ---
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 20.dp, vertical = 12.dp),
+                    placeholder = {
+                        Text("Buscar producto...", color = Color.White.copy(alpha = 0.6f))
+                    },
+                    leadingIcon = {
+                        Icon(Icons.Default.Search, null, tint = Color.White)
+                    },
+                    trailingIcon = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            // Botón de Limpiar Búsqueda
+                            if (searchQuery.isNotEmpty()) {
+                                IconButton(onClick = {
+                                    searchQuery = ""; focusManager.clearFocus()
+                                }) {
+                                    Icon(Icons.Default.Clear, null, tint = Color.White)
+                                }
+                            }
+                            // Botón de Filtro (Cambia a VERDE si hay filtro activo)
+                            IconButton(onClick = { showSheet = true }) {
+                                Icon(
+                                    imageVector = Icons.Default.FilterList,
+                                    contentDescription = "Filtrar por categoría",
+                                    tint = if (selectedCategory == "Todas") Color.White else Color(
+                                        0xFF43A047
+                                    )
+                                )
+                            }
+                        }
+                    },
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                    keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
+                    singleLine = true,
+                    shape = RoundedCornerShape(16.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.White,
+                        unfocusedTextColor = Color.White,
+                        focusedContainerColor = Color.White.copy(alpha = 0.15f),
+                        unfocusedContainerColor = Color.White.copy(alpha = 0.05f),
+                        focusedBorderColor = Color.White,
+                        unfocusedBorderColor = Color.White.copy(alpha = 0.3f),
+                        cursorColor = Color.White
+                    )
+                )
+                if (selectedCategory != "Todas") {
+                    Text(
+                        text = "Mostrando: $selectedCategory",
+                        color = Color.White.copy(alpha = 0.7f),
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.padding(start = 28.dp, bottom = 8.dp)
+                    )
+                }
+                // --- LISTA O ESTADO VACÍO ---
+                if (itemsFiltrados.isEmpty()) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         Text(
-                            "¡ALACENA LLENA!",
-                            fontWeight = FontWeight.Black,
-                            color = Color.White,
-                            fontSize = 20.sp
+                            text = if (searchQuery.isEmpty()) "¡TODO COMPLETO!" else "No hay coincidencias",
+                            color = Color.White.copy(alpha = 0.6f),
+                            fontWeight = FontWeight.Bold
                         )
                     }
                 } else {
-                    // LISTA DE PRODUCTOS FALTANTES
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
                         contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        items(itemsParaComprar) { prod ->
-                            // Cálculos previos para evitar errores de literales
+                        items(itemsFiltrados) { prod ->
                             val faltante = prod.minStock - prod.currentStock
-                            val faltanteTexto = "FALTAN: %.1f".format(faltante)
-                            val colorUrgencia = if (prod.currentStock <= prod.minStock * 0.1)
-                                Color(0xFFE53935) else Color(0xFFFFA000)
+                            val colorUrgencia =
+                                if (prod.currentStock <= prod.minStock * 0.1) Color(0xFFE53935) else Color(
+                                    0xFFFFA000
+                                )
 
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(20.dp),
                                 colors = CardDefaults.cardColors(containerColor = Color.White),
-                                elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+                                elevation = CardDefaults.cardElevation(6.dp)
                             ) {
                                 Row(
                                     modifier = Modifier.padding(16.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    // Icono Emoji
                                     Text(
-                                        text = IconUtils.getProductEmoji(prod.name, prod.category),
+                                        IconUtils.getProductEmoji(prod.name, prod.category),
                                         fontSize = 32.sp
                                     )
-
                                     Spacer(modifier = Modifier.width(12.dp))
-
-                                    // Información
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
-                                            text = prod.name.uppercase(),
+                                            prod.name.uppercase(),
                                             fontWeight = FontWeight.Black,
                                             color = Color(0xFF212121),
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis
                                         )
                                         Text(
-                                            text = "Tengo: ${prod.currentStock} / Mín: ${prod.minStock}",
+                                            "Tenés: ${prod.currentStock} / Mín: ${prod.minStock}",
                                             style = MaterialTheme.typography.labelSmall,
                                             color = Color.Gray
                                         )
                                     }
-
-                                    // Acción y Urgencia
                                     Column(horizontalAlignment = Alignment.End) {
                                         Text(
-                                            text = faltanteTexto,
+                                            "FALTAN: %.1f".format(faltante),
                                             color = colorUrgencia,
                                             fontWeight = FontWeight.Bold,
                                             style = MaterialTheme.typography.labelSmall
                                         )
-                                        Spacer(modifier = Modifier.height(6.dp))
+                                        Spacer(modifier = Modifier.height(4.dp))
                                         IconButton(
                                             onClick = {
                                                 productoSeleccionado = prod
-                                                // Sugerimos el faltante por defecto
                                                 cantidadAComprar =
                                                     "%.1f".format(faltante).replace(",", ".")
                                                 showDialog = true
@@ -219,6 +287,64 @@ fun ShoppingListScreen(
             }
         }
 
+
+        if (showSheet) {
+            ModalBottomSheet(
+                onDismissRequest = { showSheet = false },
+                sheetState = sheetState,
+                containerColor = Color(0xFF1A1A1A), // Un gris muy oscuro para el fondo
+                contentColor = Color.White
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 32.dp, start = 16.dp, end = 16.dp)
+                ) {
+                    Text(
+                        "Filtrar por Categoría",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(bottom = 16.dp)
+                    )
+
+                    // Lista vertical de categorías
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(categoriasDisponibles) { cat ->
+                            val isSelected = selectedCategory == cat
+
+                            Surface(
+                                onClick = {
+                                    selectedCategory = cat
+                                    showSheet = false // Se cierra al elegir
+                                },
+                                shape = RoundedCornerShape(12.dp),
+                                color = if (isSelected) Color(0xFF43A047) else Color.White.copy(
+                                    alpha = 0.1f
+                                ),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        if (isSelected) Icons.Default.CheckCircle else Icons.Default.Label,
+                                        contentDescription = null,
+                                        tint = if (isSelected) Color.White else Color.Gray
+                                    )
+                                    Spacer(modifier = Modifier.width(12.dp))
+                                    Text(
+                                        text = cat,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                        color = Color.White
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
         // --- DIÁLOGO DE CONFIRMACIÓN DE COMPRA ---
         if (showDialog && productoSeleccionado != null) {
             AlertDialog(
@@ -246,7 +372,10 @@ fun ShoppingListScreen(
                                 showDialog = false
                             }
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A237E))
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF1A237E),
+                            contentColor = Color.White
+                        )
                     ) {
                         Text("Sumar Stock")
                     }

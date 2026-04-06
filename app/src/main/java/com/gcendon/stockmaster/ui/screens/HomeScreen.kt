@@ -4,20 +4,29 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Label
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ShoppingCart
@@ -25,20 +34,26 @@ import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -59,14 +74,29 @@ fun HomeScreen(
 ) {
     val productList by viewModel.products.collectAsState()
     val categories by viewModel.categories.collectAsState(initial = emptyList())
+    val focusManager = LocalFocusManager.current
+
+    //estados
     var seleccionados by remember { mutableStateOf(setOf<String>()) }
     val esModoSeleccion = seleccionados.isNotEmpty()
     var productoAEditar by remember { mutableStateOf<Product?>(null) }
     var searchQuery by remember { mutableStateOf("") }
 
-    val filteredProducts = productList.filter {
-        it.name.contains(searchQuery, ignoreCase = true) ||
-                it.category.contains(searchQuery, ignoreCase = true)
+    //filtros
+    var selectedCategory by remember { mutableStateOf("Todas") }
+    var showSheet by remember { mutableStateOf(false) }
+    val sheetState = rememberModalBottomSheetState()
+
+    val filteredProducts = productList.filter { prod ->
+        val matchSearch = prod.name.contains(searchQuery, ignoreCase = true) ||
+                prod.category.contains(searchQuery, ignoreCase = true)
+        val matchCategory =
+            if (selectedCategory == "Todas") true else prod.category == selectedCategory
+        matchSearch && matchCategory
+    }
+
+    val categoriasParaFiltrar = remember(categories) {
+        listOf("Todas") + categories.map { it.name }.sorted()
     }
 
     // --- CAPA DE FONDO (Igual al Login) ---
@@ -147,7 +177,6 @@ fun HomeScreen(
                     .fillMaxSize()
                     .padding(top = paddingInterno.calculateTopPadding())
             ) {
-                // --- BARRA DE BÚSQUEDA ESTILO LOGIN ---
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
@@ -160,20 +189,24 @@ fun HomeScreen(
                             color = Color.White.copy(alpha = 0.6f)
                         )
                     },
-                    leadingIcon = {
-                        Icon(
-                            Icons.Default.Search,
-                            contentDescription = null,
-                            tint = Color.White
-                        )
-                    },
+                    leadingIcon = { Icon(Icons.Default.Search, null, tint = Color.White) },
                     trailingIcon = {
-                        if (searchQuery.isNotEmpty()) {
-                            IconButton(onClick = { searchQuery = "" }) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (searchQuery.isNotEmpty()) {
+                                IconButton(onClick = {
+                                    searchQuery = ""; focusManager.clearFocus()
+                                }) {
+                                    Icon(Icons.Default.Clear, null, tint = Color.White)
+                                }
+                            }
+                            // Icono de Filtro (Bottom Sheet)
+                            IconButton(onClick = { showSheet = true }) {
                                 Icon(
-                                    Icons.Default.Clear,
-                                    contentDescription = null,
-                                    tint = Color.White
+                                    imageVector = Icons.Default.FilterList,
+                                    contentDescription = "Filtrar por categoría",
+                                    tint = if (selectedCategory == "Todas") Color.White else Color(
+                                        0xFF43A047
+                                    )
                                 )
                             }
                         }
@@ -189,6 +222,16 @@ fun HomeScreen(
                         unfocusedTextColor = Color.White
                     )
                 )
+
+                // Mensaje si hay un filtro activo
+                if (selectedCategory != "Todas") {
+                    Text(
+                        text = "Mostrando: $selectedCategory",
+                        color = Color.White.copy(alpha = 0.7f),
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.padding(start = 24.dp, bottom = 8.dp)
+                    )
+                }
 
                 // --- GRILLA DE PRODUCTOS ---
                 LazyVerticalGrid(
@@ -229,7 +272,65 @@ fun HomeScreen(
                     }
                 }
             }
+            if (showSheet) {
+                ModalBottomSheet(
+                    onDismissRequest = { showSheet = false },
+                    sheetState = sheetState,
+                    containerColor = Color(0xFF1C1C1C), // Gris muy oscuro
+                    contentColor = Color.White,
+                    tonalElevation = 8.dp
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 40.dp, start = 20.dp, end = 20.dp)
+                    ) {
+                        Text(
+                            "Filtrar por Categoría",
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Black,
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        )
 
+                        LazyColumn(
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            items(categoriasParaFiltrar) { cat ->
+                                val isSelected = selectedCategory == cat
+                                Surface(
+                                    onClick = {
+                                        selectedCategory = cat
+                                        showSheet = false
+                                    },
+                                    shape = RoundedCornerShape(12.dp),
+                                    color = if (isSelected) Color(0xFF43A047) else Color.White.copy(
+                                        alpha = 0.05f
+                                    ),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(16.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            if (isSelected) Icons.Default.CheckCircle else Icons.Default.Label,
+                                            contentDescription = null,
+                                            tint = if (isSelected) Color.White else Color.Gray
+                                        )
+                                        Spacer(modifier = Modifier.width(16.dp))
+                                        Text(
+                                            text = cat,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                            color = Color.White,
+                                            style = MaterialTheme.typography.bodyLarge
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
             // Diálogos se mantienen igual
             if (productoAEditar != null) {
                 AddProductDialog(
