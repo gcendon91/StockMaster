@@ -415,9 +415,9 @@ class MainActivity : ComponentActivity() {
                                     categories = categories,
                                     onConfirm = { n, c, s, u, i ->
                                         viewModel.addProduct(n, c, s, u, i)
-                                        showDialog = false
                                     },
-                                    onAddCategory = { viewModel.addCategory(it) })
+                                    onAddCategory = { viewModel.addCategory(it) }
+                                )
                             }
                             if (showJoinDialog) {
                                 JoinHouseholdDialog(

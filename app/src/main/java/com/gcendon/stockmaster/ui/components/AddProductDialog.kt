@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -26,40 +27,50 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.gcendon.stockmaster.data.Category
 import com.gcendon.stockmaster.data.Product
+import kotlinx.coroutines.delay
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AddProductDialog(
-    product: Product? = null, // <--- Si es null, es NUEVO. Si tiene algo, es EDITAR.
+    product: Product? = null,
     onDismiss: () -> Unit,
     categories: List<Category>,
     onConfirm: (String, String, Double, String, Double) -> Unit,
     onAddCategory: (String) -> Unit
 ) {
-    // Si 'product' no es null, usamos sus valores. Si no, vacío.
+    // --- ESTADOS ---
     var name by remember { mutableStateOf(product?.name ?: "") }
     var selectedCategory by remember { mutableStateOf(product?.category ?: "") }
     var selectedUnit by remember { mutableStateOf(product?.unit ?: "unid") }
     var stock by remember { mutableStateOf(product?.currentStock?.toString() ?: "") }
     var idealStock by remember { mutableStateOf(product?.minStock?.toString() ?: "") }
 
-
-    // Estado para el mini-diálogo de "Nueva Categoría"
     var showAddCategoryDialog by remember { mutableStateOf(false) }
     var newCategoryName by remember { mutableStateOf("") }
 
-    // Si la lista de categorías cambia y no hay nada seleccionado, agarramos la primera
+    val focusRequester = remember { FocusRequester() }
+    val units = listOf("unid", "kg", "gr", "L", "ml", "pack", "frasco")
+
+    // FIX DEL FOCO: Usamos un delay de 100ms para asegurar que el diálogo ya cargó
+    LaunchedEffect(Unit) {
+        delay(400)
+        focusRequester.requestFocus()
+    }
+
+    // Sincronizar categoría inicial si está vacío
     LaunchedEffect(categories) {
         if (selectedCategory.isEmpty() && categories.isNotEmpty()) {
             selectedCategory = categories.first().name
         }
     }
-
-    val units = listOf("unid", "kg", "gr", "L", "ml", "pack", "frasco")
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -70,10 +81,13 @@ fun AddProductDialog(
                     value = name,
                     onValueChange = { name = it },
                     label = { Text("Nombre") },
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .focusRequester(focusRequester), // ASIGNACIÓN DEL FOCO
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
                 )
 
-                // Selector de Categoría + Botón de Agregar
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
@@ -82,13 +96,12 @@ fun AddProductDialog(
                     Box(modifier = Modifier.weight(1f)) {
                         StockExposedDropdown(
                             label = "Categoría",
-                            options = categories.map { it.name }, // Convertimos objetos a texto
+                            options = categories.map { it.name },
                             selectedOption = selectedCategory,
                             onOptionSelected = { selectedCategory = it }
                         )
                     }
 
-                    // Botón para agregar categoría nueva
                     IconButton(
                         onClick = { showAddCategoryDialog = true },
                         modifier = Modifier.padding(top = 8.dp)
@@ -96,7 +109,7 @@ fun AddProductDialog(
                         Icon(
                             Icons.Default.Add,
                             contentDescription = "Nueva Cat",
-                            tint = MaterialTheme.colorScheme.primary
+                            tint = MaterialTheme.colorScheme.primary // COLOR ORIGINAL
                         )
                     }
                 }
@@ -106,8 +119,12 @@ fun AddProductDialog(
                         value = stock,
                         onValueChange = { stock = it },
                         label = { Text("Cantidad") },
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                        modifier = Modifier.weight(1f)
+                        keyboardOptions = KeyboardOptions(
+                            keyboardType = KeyboardType.Decimal,
+                            imeAction = ImeAction.Next
+                        ),
+                        modifier = Modifier.weight(1f),
+                        singleLine = true
                     )
                     Box(modifier = Modifier.weight(1f)) {
                         StockExposedDropdown(
@@ -118,13 +135,18 @@ fun AddProductDialog(
                         )
                     }
                 }
+
                 TextField(
                     value = idealStock,
                     onValueChange = { idealStock = it },
                     label = { Text("Stock Ideal ($selectedUnit)") },
                     placeholder = { Text("Ej: 5.0") },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-                    modifier = Modifier.fillMaxWidth()
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = KeyboardType.Decimal,
+                        imeAction = ImeAction.Done
+                    ),
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
                 )
             }
         },
@@ -133,22 +155,40 @@ fun AddProductDialog(
                 onClick = {
                     val stockDouble = stock.toDoubleOrNull() ?: 0.0
                     val idealDouble = idealStock.toDoubleOrNull() ?: 1.0
+
                     if (name.isNotBlank() && selectedCategory.isNotBlank()) {
+                        // 1. Guardamos el producto
                         onConfirm(name, selectedCategory, stockDouble, selectedUnit, idealDouble)
-                        onDismiss()
+
+                        // 2. Decidimos si cerrar o limpiar
+                        if (product == null) {
+                            // Es NUEVO: No cerramos, solo limpiamos para el siguiente
+                            name = ""
+                            stock = ""
+                            idealStock = ""
+                            selectedUnit = "unid"
+                            // Re-pedimos el foco para el siguiente producto
+                            focusRequester.requestFocus()
+                        } else {
+                            // Es EDICIÓN: Cerramos el diálogo normalmente
+                            onDismiss()
+                        }
                     }
-                }, colors = ButtonDefaults.buttonColors(
+                },
+                colors = ButtonDefaults.buttonColors(
                     containerColor = Color(0xFF1A237E),
                     contentColor = Color.White
                 )
-            ) { Text("Guardar") }
+            ) {
+                Text(if (product == null) "Guardar y Seguir" else "Guardar")
+            }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cancelar") }
+            TextButton(onClick = onDismiss) {
+                Text("Cancelar") // COLOR/TEXTO ORIGINAL
+            }
         }
     )
-
-    // MINI-DIÁLOGO PARA AGREGAR CATEGORÍA
     if (showAddCategoryDialog) {
         AlertDialog(
             onDismissRequest = { showAddCategoryDialog = false },
@@ -157,14 +197,15 @@ fun AddProductDialog(
                 TextField(
                     value = newCategoryName,
                     onValueChange = { newCategoryName = it },
-                    label = { Text("Nombre de la categoría") }
+                    label = { Text("Nombre de la categoría") },
+                    singleLine = true
                 )
             },
             confirmButton = {
                 Button(onClick = {
                     if (newCategoryName.isNotBlank()) {
                         onAddCategory(newCategoryName)
-                        selectedCategory = newCategoryName // La dejamos seleccionada
+                        selectedCategory = newCategoryName
                         newCategoryName = ""
                         showAddCategoryDialog = false
                     }
