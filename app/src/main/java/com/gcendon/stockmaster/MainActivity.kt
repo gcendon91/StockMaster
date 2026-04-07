@@ -28,20 +28,24 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ContentCopy
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ExitToApp
+import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FabPosition
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MaterialTheme.typography
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
@@ -83,7 +87,10 @@ import com.gcendon.stockmaster.ui.screens.ShoppingListScreen
 import com.gcendon.stockmaster.ui.theme.StockMasterTheme
 import com.gcendon.stockmaster.ui.viewmodel.ProductViewModel
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.userProfileChangeRequest
+import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 class MainActivity : ComponentActivity() {
     @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
@@ -93,76 +100,83 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             val viewModel: ProductViewModel = viewModel()
-            FirebaseAuth.getInstance().currentUser
-            val navController = rememberNavController() // El GPS
+            val navController = rememberNavController()
             val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
             val scope = rememberCoroutineScope()
             val categories by viewModel.categories.collectAsState()
-
             val auth = FirebaseAuth.getInstance()
 
+            // ESTADOS PRINCIPALES
             var showDialog by remember { mutableStateOf(false) }
+            var showJoinDialog by remember { mutableStateOf(false) }
+            var isUploadingPhoto by remember { mutableStateOf(false) }
+            var userState by remember { mutableStateOf(auth.currentUser) }
+            var showProfileOptions by remember { mutableStateOf(false) }
 
-            // Observamos en qué pantalla estamos para marcarla en el menú
             val navBackStackEntry by navController.currentBackStackEntryAsState()
             val currentRoute = navBackStackEntry?.destination?.route
-
             val context = androidx.compose.ui.platform.LocalContext.current
             val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
-
-            val user = FirebaseAuth.getInstance().currentUser
-            val photoUrl = user?.photoUrl // URL mágica de Google
-            val userName = user?.displayName ?: "Usuario"
-            val userEmail = user?.email ?: ""
 
             val galleryLauncher = rememberLauncherForActivityResult(
                 contract = ActivityResultContracts.GetContent()
             ) { uri ->
                 if (uri != null) {
-                    // Por ahora lo dejamos así, luego podrías subirlo a Firebase Storage
-                    // o guardarlo en una variable de estado para que se vea el cambio.
+                    scope.launch {
+                        try {
+                            isUploadingPhoto = true
+                            val uid = userState?.uid ?: return@launch
+                            val storageRef =
+                                FirebaseStorage.getInstance().reference.child("profile_pictures/$uid/profile.jpg")
+
+                            storageRef.putFile(uri).await()
+                            val downloadUrl = storageRef.downloadUrl.await()
+
+                            val profileUpdates = userProfileChangeRequest { photoUri = downloadUrl }
+                            userState?.updateProfile(profileUpdates)?.await()
+                            userState?.reload()?.await()
+
+                            // Actualizamos el estado para que la UI se entere del cambio
+                            userState = auth.currentUser
+
+                            android.widget.Toast.makeText(
+                                context, "¡Foto actualizada!", android.widget.Toast.LENGTH_SHORT
+                            ).show()
+                        } catch (e: Exception) {
+                            android.widget.Toast.makeText(
+                                context, "Error al subir", android.widget.Toast.LENGTH_SHORT
+                            ).show()
+                        } finally {
+                            isUploadingPhoto = false
+                        }
+                    }
                 }
             }
-
             StockMasterTheme {
-                // 1. Creamos un estado que recuerde al usuario actual
-                var user by remember { mutableStateOf(auth.currentUser) }
-
-                //escucha cambios en la sesión.
+                // Escucha cambios en la sesión
                 DisposableEffect(Unit) {
-                    val listener = FirebaseAuth.AuthStateListener { auth ->
-                        user = auth.currentUser
+                    val listener = FirebaseAuth.AuthStateListener { currentAuth ->
+                        userState = currentAuth.currentUser
                     }
-                    FirebaseAuth.getInstance().addAuthStateListener(listener)
-                    onDispose { FirebaseAuth.getInstance().removeAuthStateListener(listener) }
-                }
-                LaunchedEffect(user) {
-                    user?.let {
-                        viewModel.setupUserAndHousehold(it.uid)
-                    }
+                    auth.addAuthStateListener(listener)
+                    onDispose { auth.removeAuthStateListener(listener) }
                 }
 
-                if (user == null) {
-                    // Si no hay nadie, mostramos la pantalla de login que hiciste
+                LaunchedEffect(userState) {
+                    userState?.let { viewModel.setupUserAndHousehold(it.uid) }
+                }
+
+                if (userState == null) {
                     LoginScreen(viewModel = viewModel)
                 } else {
-                    val auth = FirebaseAuth.getInstance()
-                    auth.currentUser
-                    var showJoinDialog by remember { mutableStateOf(false) }
-
                     ModalNavigationDrawer(
                         drawerState = drawerState, drawerContent = {
                             ModalDrawerSheet(
-                                drawerContainerColor = Color(0xFFFDFDFF), // Un blanco casi puro pero con un toque frío
-                                drawerShape = RoundedCornerShape(
-                                    topEnd = 0.dp,
-                                    bottomEnd = 0.dp
-                                ), // Recto en los bordes queda más moderno si ocupa todo el lateral
-                                modifier = Modifier.width(320.dp) // Un ancho estándar pro
+                                drawerContainerColor = Color(0xFFFDFDFF),
+                                drawerShape = RoundedCornerShape(0.dp),
+                                modifier = Modifier.width(320.dp)
                             ) {
-                                FirebaseAuth.getInstance().currentUser
-
-                                // 1. ENCABEZADO: Ahora con el fondo de la cocina pero muy desenfocado (o el gradiente pro)
+                                // --- ENCABEZADO ---
                                 Box(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -170,57 +184,70 @@ class MainActivity : ComponentActivity() {
                                         .background(
                                             brush = androidx.compose.ui.graphics.Brush.verticalGradient(
                                                 colors = listOf(
-                                                    Color(0xFF1A237E),
-                                                    Color(0xFF3949AB)
+                                                    Color(0xFF1A237E), // Azul oscuro (Indigo 900)
+                                                    Color(0xFF3949AB)  // Azul intermedio (Indigo 600)
                                                 )
                                             )
                                         )
                                 ) {
-                                    // Podrías poner una imagen de fondo aquí también con opacidad baja
                                     Column(
                                         modifier = Modifier
                                             .fillMaxSize()
                                             .padding(24.dp),
                                         verticalArrangement = Arrangement.Bottom
                                     ) {
-                                        Surface(
-                                            modifier = Modifier
-                                                .size(72.dp)
-                                                .clickable { galleryLauncher.launch("image/*") }, // <--- Al tocar, elige foto
-                                            shape = CircleShape,
-                                            color = Color.White.copy(alpha = 0.2f),
-                                            border = BorderStroke(2.dp, Color.White)
-                                        ) {
-                                            // Si currentUser tiene foto de Google (photoUrl), AsyncImage la carga sola.
-                                            // Si no, muestra el icono por defecto.
-                                            if (photoUrl != null) {
-                                                AsyncImage(
-                                                    model = photoUrl, // <--- Usamos la variable limpia
-                                                    contentDescription = "Foto de perfil",
-                                                    modifier = Modifier.fillMaxSize(),
-                                                    contentScale = ContentScale.Crop
-                                                )
-                                            } else {
-                                                Icon(
-                                                    Icons.Default.AccountCircle,
-                                                    contentDescription = null,
-                                                    modifier = Modifier
-                                                        .fillMaxSize()
-                                                        .padding(4.dp),
-                                                    tint = Color.White
+                                        Box(contentAlignment = Alignment.Center) {
+                                            Surface(
+                                                modifier = Modifier
+                                                    .size(72.dp)
+                                                    .clickable {
+                                                        if (!isUploadingPhoto) showProfileOptions =
+                                                            true
+                                                    },
+                                                shape = CircleShape,
+                                                color = Color.White.copy(alpha = 0.2f),
+                                                border = BorderStroke(2.dp, Color.White)
+                                            ) {
+                                                // USA userState DIRECTAMENTE AQUÍ
+                                                if (userState?.photoUrl != null) {
+                                                    AsyncImage(
+                                                        model = userState?.photoUrl,
+                                                        contentDescription = null,
+                                                        modifier = Modifier.fillMaxSize(),
+                                                        contentScale = ContentScale.Crop
+                                                    )
+                                                } else {
+                                                    Icon(
+                                                        Icons.Default.AccountCircle,
+                                                        null,
+                                                        modifier = Modifier
+                                                            .fillMaxSize()
+                                                            .padding(4.dp),
+                                                        tint = Color.White
+                                                    )
+                                                }
+                                            }
+
+                                            if (isUploadingPhoto) {
+                                                CircularProgressIndicator(
+                                                    modifier = Modifier.size(
+                                                        72.dp
+                                                    ), color = Color.White
                                                 )
                                             }
                                         }
+
                                         Spacer(modifier = Modifier.height(12.dp))
+
+                                        // USA userState PARA EL NOMBRE Y MAIL
                                         Text(
-                                            text = userName,
+                                            text = userState?.displayName ?: "Usuario Master",
                                             style = typography.titleLarge,
                                             color = Color.White,
-                                            fontWeight = FontWeight.Black,
-                                            letterSpacing = 1.sp
+                                            fontWeight = FontWeight.Black
                                         )
                                         Text(
-                                            text = userEmail,
+                                            text = userState?.email ?: "",
                                             style = typography.bodySmall,
                                             color = Color.White.copy(alpha = 0.6f)
                                         )
@@ -234,7 +261,7 @@ class MainActivity : ComponentActivity() {
                                     text = "GESTIÓN DE HOGAR",
                                     style = typography.labelLarge,
                                     fontWeight = FontWeight.Bold,
-                                    color = Color.LightGray,
+                                    color = Color.Gray,
                                     modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
                                 )
 
@@ -309,38 +336,30 @@ class MainActivity : ComponentActivity() {
                                     NavigationDrawerItem(
                                         icon = {
                                             Icon(
-                                                icon,
-                                                null,
-                                                modifier = Modifier.size(24.dp)
+                                                icon, null, modifier = Modifier.size(24.dp)
                                             )
-                                        },
-                                        label = {
+                                        }, label = {
                                             Text(
                                                 label.uppercase(),
                                                 fontWeight = if (isSelected) FontWeight.Black else FontWeight.Medium,
                                                 letterSpacing = 1.sp
                                             )
-                                        },
-                                        selected = isSelected,
-                                        onClick = {
+                                        }, selected = isSelected, onClick = {
                                             navController.navigate(route) {
                                                 popUpTo("home") {
                                                     inclusive = false
                                                 }
                                             }
                                             scope.launch { drawerState.close() }
-                                        },
-                                        colors = NavigationDrawerItemDefaults.colors(
+                                        }, colors = NavigationDrawerItemDefaults.colors(
                                             selectedContainerColor = Color(0xFFE8EAF6),
                                             selectedTextColor = Color(0xFF1A237E),
                                             selectedIconColor = Color(0xFF1A237E),
                                             unselectedContainerColor = Color.Transparent,
                                             unselectedTextColor = Color.Gray,
                                             unselectedIconColor = Color.Gray
-                                        ),
-                                        modifier = Modifier.padding(
-                                            horizontal = 16.dp,
-                                            vertical = 4.dp
+                                        ), modifier = Modifier.padding(
+                                            horizontal = 16.dp, vertical = 4.dp
                                         )
                                     )
                                 }
@@ -357,9 +376,7 @@ class MainActivity : ComponentActivity() {
                                 NavigationDrawerItem(
                                     icon = {
                                         Icon(
-                                            Icons.Default.Add,
-                                            null,
-                                            tint = Color(0xFF43A047)
+                                            Icons.Default.Add, null, tint = Color(0xFF43A047)
                                         )
                                     },
                                     label = {
@@ -379,9 +396,7 @@ class MainActivity : ComponentActivity() {
                                 NavigationDrawerItem(
                                     icon = {
                                         Icon(
-                                            Icons.Default.ExitToApp,
-                                            null,
-                                            tint = Color.LightGray
+                                            Icons.Default.ExitToApp, null, tint = Color.LightGray
                                         )
                                     },
                                     label = {
@@ -394,15 +409,15 @@ class MainActivity : ComponentActivity() {
                                     selected = false,
                                     onClick = { auth.signOut() },
                                     modifier = Modifier.padding(
-                                        start = 16.dp,
-                                        end = 16.dp,
-                                        bottom = 24.dp
+                                        start = 16.dp, end = 16.dp, bottom = 24.dp
                                     )
                                 )
                             }
                         }) {
                         Scaffold(
-                            modifier = Modifier.fillMaxSize(), floatingActionButton = {
+                            modifier = Modifier.fillMaxSize(),
+                            floatingActionButtonPosition = FabPosition.Center,
+                            floatingActionButton = {
                                 // El botón de agregar producto solo aparece en la Home
                                 if (currentRoute == "home") {
                                     FloatingActionButton(
@@ -447,8 +462,7 @@ class MainActivity : ComponentActivity() {
                                     onConfirm = { n, c, s, u, i ->
                                         viewModel.addProduct(n, c, s, u, i)
                                     },
-                                    onAddCategory = { viewModel.addCategory(it) }
-                                )
+                                    onAddCategory = { viewModel.addCategory(it) })
                             }
                             if (showJoinDialog) {
                                 JoinHouseholdDialog(
@@ -460,9 +474,7 @@ class MainActivity : ComponentActivity() {
 
                                             // 2. Mostramos el mensaje (Toast)
                                             android.widget.Toast.makeText(
-                                                context,
-                                                mensaje,
-                                                android.widget.Toast.LENGTH_SHORT
+                                                context, mensaje, android.widget.Toast.LENGTH_SHORT
                                             ).show()
 
                                             // 3. Si fue exitoso, cerramos el diálogo
@@ -470,14 +482,117 @@ class MainActivity : ComponentActivity() {
                                                 showJoinDialog = false
                                             }
                                         }
-                                    }
-                                )
+                                    })
+                            }
+                            if (showProfileOptions) {
+                                AlertDialog(
+                                    onDismissRequest = { showProfileOptions = false },
+                                    icon = {
+                                        Icon(
+                                            Icons.Default.Face,
+                                            contentDescription = null,
+                                            tint = Color(0xFF1A237E)
+                                        )
+                                    },
+                                    title = {
+                                        Text(
+                                            "Personalizar perfil",
+                                            style = typography.headlineSmall,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    },
+                                    text = {
+                                        Column(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(top = 16.dp)
+                                        ) {
+                                            // Opción 1: Galería
+                                            ProfileMenuOption(
+                                                icon = Icons.Default.PhotoLibrary,
+                                                text = "Elegir de la galería",
+                                                onClick = {
+                                                    showProfileOptions = false
+                                                    galleryLauncher.launch("image/*")
+                                                })
+
+                                            // Opción 2: Foto de Google
+                                            ProfileMenuOption(
+                                                icon = Icons.Default.AccountCircle,
+                                                text = "Restablecer foto de Google",
+                                                onClick = {
+                                                    showProfileOptions = false
+                                                    val googleUrl =
+                                                        userState?.providerData?.find { it.providerId == "google.com" }?.photoUrl
+                                                    // LLAMAMOS A LA FUNCIÓN DE ACTUALIZACIÓN
+                                                    actualizarYRefrescar(
+                                                        googleUrl, scope, auth
+                                                    ) { newUser -> userState = newUser }
+                                                })
+
+                                            androidx.compose.material3.HorizontalDivider(
+                                                modifier = Modifier.padding(
+                                                    vertical = 8.dp
+                                                ), color = Color.LightGray.copy(alpha = 0.3f)
+                                            )
+
+                                            // Opción 3: Eliminar
+                                            ProfileMenuOption(
+                                                icon = Icons.Default.Delete,
+                                                text = "Quitar foto actual",
+                                                color = Color.Red,
+                                                onClick = {
+                                                    showProfileOptions = false
+                                                    actualizarYRefrescar(
+                                                        null, scope, auth
+                                                    ) { newUser -> userState = newUser }
+                                                })
+                                        }
+                                    },
+                                    confirmButton = {
+                                        TextButton(onClick = { showProfileOptions = false }) {
+                                            Text(
+                                                "Cerrar"
+                                            )
+                                        }
+                                    })
                             }
                         }
                     }
                 }
             }
 
+        }
+    }
+
+    private fun actualizarYRefrescar(
+        nuevaUri: android.net.Uri?,
+        scope: kotlinx.coroutines.CoroutineScope,
+        auth: FirebaseAuth,
+        onUserUpdated: (com.google.firebase.auth.FirebaseUser?) -> Unit
+    ) {
+        scope.launch {
+            try {
+                val user = auth.currentUser
+                val profileUpdates = userProfileChangeRequest {
+                    photoUri = nuevaUri
+                }
+
+                // 1. Subimos el cambio
+                user?.updateProfile(profileUpdates)?.await()
+
+                // 2. Traemos la info fresca del servidor
+                user?.reload()?.await()
+
+                // 3. EL TRUCO:
+                // Ponemos el estado en null una fracción de segundo y luego el usuario nuevo.
+                // Esto "despierta" a Compose y lo obliga a redibujar todo el Drawer.
+                onUserUpdated(null)
+                onUserUpdated(auth.currentUser)
+
+            } catch (e: Exception) {
+                // Error silencioso o un Toast
+            }
         }
     }
 }
@@ -533,6 +648,34 @@ fun JoinHouseholdDialog(
             if (!isLoading) {
                 TextButton(onClick = onDismiss) { Text("Cancelar") }
             }
-        }
-    )
+        })
+}
+
+@Composable
+fun ProfileMenuOption(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    text: String,
+    color: Color? = null, // Usamos null por defecto
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(vertical = 12.dp, horizontal = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Si color es null, usamos el azul indigo. Si no, usamos el color que venga (como el Rojo)
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = color ?: Color(0xFF3949AB)
+        )
+        Spacer(modifier = Modifier.width(16.dp))
+        Text(
+            text = text,
+            style = typography.bodyLarge,
+            color = color ?: Color.Unspecified // Unspecified deja el color de texto por defecto
+        )
+    }
 }

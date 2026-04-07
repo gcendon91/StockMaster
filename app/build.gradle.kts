@@ -81,4 +81,7 @@ dependencies {
 
     //cargar imagenes
     implementation("io.coil-kt:coil-compose:2.6.0")
+
+    implementation("com.google.firebase:firebase-database-ktx")
+    implementation("com.google.firebase:firebase-storage-ktx")
 }
