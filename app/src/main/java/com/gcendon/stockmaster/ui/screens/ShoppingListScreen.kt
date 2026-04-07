@@ -108,9 +108,11 @@ fun ShoppingListScreen(
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop
         )
-        Box(modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.6f)))
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.6f))
+        )
 
         Scaffold(
             containerColor = Color.Transparent,
@@ -210,74 +212,116 @@ fun ShoppingListScreen(
                 } else {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                        contentPadding = PaddingValues(
+                            start = 16.dp,
+                            end = 16.dp,
+                            top = 12.dp,
+                            bottom = 80.dp
+                        ),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(itemsFiltrados) { prod ->
-                            val faltante = prod.minStock - prod.currentStock
+                            val faltante = (prod.minStock - prod.currentStock).coerceAtLeast(0.0)
+                            // Rojo si queda casi nada (10%), si no, un Naranja/Ámbar fuerte
                             val colorUrgencia =
                                 if (prod.currentStock <= prod.minStock * 0.1) Color(0xFFE53935) else Color(
                                     0xFFFFA000
                                 )
 
+                            // Formateo de número: 1.0 -> 1
+                            val faltanteTxt = if (faltante % 1.0 == 0.0) faltante.toInt()
+                                .toString() else "%.1f".format(faltante)
+
                             Card(
                                 modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(20.dp),
+                                shape = RoundedCornerShape(18.dp),
                                 colors = CardDefaults.cardColors(containerColor = Color.White),
-                                elevation = CardDefaults.cardElevation(6.dp)
+                                elevation = CardDefaults.cardElevation(3.dp)
                             ) {
                                 Row(
-                                    modifier = Modifier.padding(16.dp),
+                                    modifier = Modifier
+                                        .padding(12.dp)
+                                        .fillMaxWidth(),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
+                                    // 1. IZQUIERDA: ICONO + NOMBRE (Ancla visual)
                                     Text(
-                                        IconUtils.getProductEmoji(prod.name, prod.category),
-                                        fontSize = 32.sp
+                                        text = IconUtils.getProductEmoji(prod.name, prod.category),
+                                        fontSize = 28.sp
                                     )
+
                                     Spacer(modifier = Modifier.width(12.dp))
+
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
-                                            prod.name.uppercase(),
+                                            text = prod.name.uppercase(),
+                                            style = MaterialTheme.typography.titleMedium,
                                             fontWeight = FontWeight.Black,
                                             color = Color(0xFF212121),
                                             maxLines = 1,
                                             overflow = TextOverflow.Ellipsis
                                         )
                                         Text(
-                                            "Tenés: ${prod.currentStock} / Mín: ${prod.minStock}",
+                                            text = prod.category,
                                             style = MaterialTheme.typography.labelSmall,
-                                            color = Color.Gray
+                                            color = Color.Gray,
+                                            fontWeight = FontWeight.Bold
                                         )
                                     }
-                                    Column(horizontalAlignment = Alignment.End) {
+
+                                    // 2. DERECHA: SOLO EL FALTANTE
+                                    Column(
+                                        horizontalAlignment = Alignment.End,
+                                        modifier = Modifier.padding(horizontal = 4.dp)
+                                    ) {
                                         Text(
-                                            "FALTAN: %.1f".format(faltante),
+                                            text = "FALTAN",
+                                            style = MaterialTheme.typography.labelSmall,
                                             color = colorUrgencia,
-                                            fontWeight = FontWeight.Bold,
-                                            style = MaterialTheme.typography.labelSmall
+                                            fontWeight = FontWeight.Black
                                         )
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        IconButton(
-                                            onClick = {
-                                                productoSeleccionado = prod
-                                                cantidadAComprar =
-                                                    "%.1f".format(faltante).replace(",", ".")
-                                                showDialog = true
-                                            },
-                                            modifier = Modifier
-                                                .size(40.dp)
-                                                .background(
-                                                    Color(0xFF43A047),
-                                                    RoundedCornerShape(10.dp)
-                                                )
-                                        ) {
-                                            Icon(
-                                                Icons.Default.AddShoppingCart,
-                                                null,
-                                                tint = Color.White,
-                                                modifier = Modifier.size(20.dp)
+                                        Row(verticalAlignment = Alignment.Bottom) {
+                                            Text(
+                                                text = faltanteTxt,
+                                                fontSize = 26.sp, // Tamaño grande e impactante
+                                                fontWeight = FontWeight.Black,
+                                                color = colorUrgencia,
+                                                lineHeight = 26.sp
+                                            )
+                                            Spacer(modifier = Modifier.width(2.dp))
+                                            Text(
+                                                text = prod.unit,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                color = colorUrgencia,
+                                                fontWeight = FontWeight.Bold,
+                                                modifier = Modifier.padding(bottom = 2.dp)
                                             )
                                         }
+                                    }
+
+                                    Spacer(modifier = Modifier.width(8.dp))
+
+                                    // 3. BOTÓN (Verde y moderno)
+                                    IconButton(
+                                        onClick = {
+                                            productoSeleccionado = prod
+                                            cantidadAComprar =
+                                                "%.1f".format(faltante).replace(",", ".")
+                                            showDialog = true
+                                        },
+                                        modifier = Modifier
+                                            .size(38.dp)
+                                            .background(
+                                                Color(0xFF43A047),
+                                                RoundedCornerShape(10.dp)
+                                            )
+                                    ) {
+                                        Icon(
+                                            Icons.Default.AddShoppingCart,
+                                            null,
+                                            tint = Color.White,
+                                            modifier = Modifier.size(18.dp)
+                                        )
                                     }
                                 }
                             }
