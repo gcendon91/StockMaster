@@ -16,15 +16,19 @@ in real-time, manage shopping lists, and track stock levels with a sleek, modern
   <img src="https://raw.githubusercontent.com/gcendon91/StockMaster/master/screenshots/shopping_list.png" width="30%" />
 </div>
 
-### ✨ Key Features (v1.2)
+### ✨ Key Features (v1.3.0)
 
-* 🏠 **Collaborative Households:** Share your pantry using **reliable 6-character invite codes**. Optimized join flow with real-time feedback.
+* 👤 **Profile Personalization:** Integrated **Firebase Storage** to upload custom profile pictures.
+  Manage your identity with a modern menu (Google Sync, Custom Upload, or Avatar removal).
+* 🏠 **Collaborative Households:** Share your pantry using **6-character invite codes**. Optimized
+  join flow with real-time feedback and clear error states.
 * ⚡ **Real-time Sync:** Powered by **Firebase Firestore**, every change is updated instantly across all connected devices.
-* 🚦 **Dynamic Stock Semaphore:** Refined visual alerts to prioritize your shopping:
-    * 🔴 **Red:** Critical (less than 10% of minimum).
-    * 🟡 **Amber:** Needs restock (below minimum level).
-    * 🟢 **Green:** Healthy stock (ideal level reached).
-* 🛒 **Smart Shopping List & Quick Restock:** Automatically tracks missing items and includes a **Quick Purchase Dialog** to update stock manually or using suggested amounts while you shop.
+* 🛒 **Streamlined Shopping List:** Cleaned UI focusing on "Missing" amounts. Restored the classic
+  large-text urgency with a modern "Slim Card" design and **Quick Purchase** buttons.
+* 📦 **Infinite-Add Flow:** Quickly populate your inventory with an optimized `AddProductDialog` that
+  stays open and auto-focuses for multiple consecutive entries.
+* 📐 **Visual Consistency:** Unified design system across Home and Shopping List using a shared DNA:
+  18dp corner radius, 3dp elevation, and standardized 8dp spacing.
 * 🔐 **Secure Auth:** Integrated with **Google Sign-In (Credential Manager)** and Email/Password.
 * 🍳 **Modern Aesthetics:** "Kitchen-themed" UI with glassmorphism, optimized dark-overlay visuals, and intuitive UX.
 
@@ -32,8 +36,8 @@ in real-time, manage shopping lists, and track stock levels with a sleek, modern
 
 * **Language:** Kotlin + Coroutines & Flow.
 * **UI:** Jetpack Compose (Material Design 3).
-* **Backend:** Firebase (Firestore & Authentication).
-* **Auth:** Google Credential Manager API.
+* **Image Loading:** Coil for asynchronous profile and product images.
+* **Backend:** Firebase (Firestore, Authentication & Storage).
 * **Architecture:** MVVM (Model-View-ViewModel).
 
 ---
@@ -45,15 +49,20 @@ para la gestión colaborativa de inventarios hogareños. Permite a familias o co
 sincronizar su despensa en tiempo real, gestionar listas de compras y controlar niveles de stock con
 una interfaz moderna y elegante.
 
-### ✨ Características (v1.2)
+### ✨ Características (v1.3.0)
 
-* 🏠 **Hogares Colaborativos:** Compartí tu despensa usando **códigos de invitación de 6 caracteres**. Flujo de unión optimizado con estados de carga y errores claros.
+* 👤 **Personalización de Perfil:** Integración con **Firebase Storage** para subir fotos de perfil.
+  Gestioná tu identidad desde un menú moderno (Sincronización con Google, Carga personalizada o
+  eliminar avatar).
+* 🏠 **Hogares Colaborativos:** Compartí tu despensa usando **códigos de invitación de 6 caracteres
+  **. Flujo de unión optimizado con estados de carga claros.
 * ⚡ **Sincronización en Tiempo Real:** Gracias a **Firebase Firestore**, cada cambio se refleja al instante en todos los dispositivos.
-* 🚦 **Semáforo de Stock Dinámico:** Alertas visuales refinadas para priorizar tus compras:
-    * 🔴 **Rojo:** Crítico (menos del 10% del mínimo).
-    * 🟡 **Ámbar:** Falta stock (por debajo del nivel mínimo).
-    * 🟢 **Verde:** Stock ideal.
-* 🛒 **Lista de Compras e Incremento Rápido:** Calcula qué falta y permite **reponer stock al instante** mediante un diálogo de compra que sugiere la cantidad faltante.
+* 🛒 **Lista de Compras Optimizada:** UI limpia enfocada en lo que falta comprar. Recuperamos la
+  claridad visual del "Semáforo de Stock" con un diseño de tarjetas horizontales más eficiente.
+* 📦 **Flujo de Carga Infinita:** Diálogo de "Agregar Producto" optimizado con auto-foco para
+  permitir cargas rápidas y consecutivas del inventario sin cerrar la ventana.
+* 📐 **Consistencia Visual:** Sistema de diseño unificado entre la Home y la Shopping List: radio de
+  bordes de 18dp, elevaciones de 3dp y espaciado estándar de 8dp.
 * 🔐 **Acceso Seguro:** Integración con **Google Sign-In (Credential Manager)** y Email para un ingreso rápido.
 * 🍳 **Estética Moderna:** Interfaz con temática de cocina, efectos de "glassmorphism" y optimización visual de alto contraste para uso en ambientes luminosos (como el supermercado).
 
@@ -63,7 +72,8 @@ una interfaz moderna y elegante.
 
 You can download the latest APK from the releases section / Podés descargar el último APK desde la
 sección de releases:
-👉 [**Download Stock Master v1.2.0**](https://github.com/gcendon91/StockMaster/releases/download/v1.2.0/StockMaster_v1.2.0.apk)
+👉 [**Download Stock Master v1.3.0
+**](https://github.com/gcendon91/StockMaster/releases/download/v1.3.0/StockMaster_v1.3.0.apk)
 
 ---
 *Developed by Gonzalo Cendón - 2026*
