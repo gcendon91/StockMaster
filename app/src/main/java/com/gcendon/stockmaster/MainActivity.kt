@@ -498,9 +498,12 @@ class MainActivity : ComponentActivity() {
                                         Text(
                                             "Personalizar perfil",
                                             style = typography.headlineSmall,
-                                            fontWeight = FontWeight.Bold
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color(0xFF1A237E)
                                         )
                                     },
+                                    containerColor = Color(0xFFF5F6FA),
+
                                     text = {
                                         Column(
                                             modifier = Modifier
@@ -511,6 +514,7 @@ class MainActivity : ComponentActivity() {
                                             ProfileMenuOption(
                                                 icon = Icons.Default.PhotoLibrary,
                                                 text = "Elegir de la galería",
+                                                color = Color(0xFF1A237E),
                                                 onClick = {
                                                     showProfileOptions = false
                                                     galleryLauncher.launch("image/*")
@@ -520,6 +524,7 @@ class MainActivity : ComponentActivity() {
                                             ProfileMenuOption(
                                                 icon = Icons.Default.AccountCircle,
                                                 text = "Restablecer foto de Google",
+                                                color = Color(0xFF1A237E),
                                                 onClick = {
                                                     showProfileOptions = false
                                                     val googleUrl =
@@ -552,7 +557,7 @@ class MainActivity : ComponentActivity() {
                                     confirmButton = {
                                         TextButton(onClick = { showProfileOptions = false }) {
                                             Text(
-                                                "Cerrar"
+                                                "Cerrar", color = Color(0xFF1A237E)
                                             )
                                         }
                                     })
@@ -663,13 +668,10 @@ fun ProfileMenuOption(
             .fillMaxWidth()
             .clickable { onClick() }
             .padding(vertical = 12.dp, horizontal = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
+        verticalAlignment = Alignment.CenterVertically) {
         // Si color es null, usamos el azul indigo. Si no, usamos el color que venga (como el Rojo)
         Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = color ?: Color(0xFF3949AB)
+            imageVector = icon, contentDescription = null, tint = color ?: Color(0xFF3949AB)
         )
         Spacer(modifier = Modifier.width(16.dp))
         Text(
