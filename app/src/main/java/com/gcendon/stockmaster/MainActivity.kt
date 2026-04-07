@@ -3,11 +3,14 @@ package com.gcendon.stockmaster
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -38,6 +41,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MaterialTheme.typography
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
@@ -61,6 +65,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -69,6 +74,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import coil.compose.AsyncImage
 import com.gcendon.stockmaster.ui.components.AddProductDialog
 import com.gcendon.stockmaster.ui.screens.CategoryScreen
 import com.gcendon.stockmaster.ui.screens.HomeScreen
@@ -104,6 +110,19 @@ class MainActivity : ComponentActivity() {
             val context = androidx.compose.ui.platform.LocalContext.current
             val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
 
+            val user = FirebaseAuth.getInstance().currentUser
+            val photoUrl = user?.photoUrl // URL mágica de Google
+            val userName = user?.displayName ?: "Usuario"
+            val userEmail = user?.email ?: ""
+
+            val galleryLauncher = rememberLauncherForActivityResult(
+                contract = ActivityResultContracts.GetContent()
+            ) { uri ->
+                if (uri != null) {
+                    // Por ahora lo dejamos así, luego podrías subirlo a Firebase Storage
+                    // o guardarlo en una variable de estado para que se vea el cambio.
+                }
+            }
 
             StockMasterTheme {
                 // 1. Creamos un estado que recuerde al usuario actual
@@ -141,7 +160,7 @@ class MainActivity : ComponentActivity() {
                                 ), // Recto en los bordes queda más moderno si ocupa todo el lateral
                                 modifier = Modifier.width(320.dp) // Un ancho estándar pro
                             ) {
-                                val currentUser = FirebaseAuth.getInstance().currentUser
+                                FirebaseAuth.getInstance().currentUser
 
                                 // 1. ENCABEZADO: Ahora con el fondo de la cocina pero muy desenfocado (o el gradiente pro)
                                 Box(
@@ -165,31 +184,43 @@ class MainActivity : ComponentActivity() {
                                         verticalArrangement = Arrangement.Bottom
                                     ) {
                                         Surface(
-                                            modifier = Modifier.size(72.dp),
+                                            modifier = Modifier
+                                                .size(72.dp)
+                                                .clickable { galleryLauncher.launch("image/*") }, // <--- Al tocar, elige foto
                                             shape = CircleShape,
                                             color = Color.White.copy(alpha = 0.2f),
                                             border = BorderStroke(2.dp, Color.White)
                                         ) {
-                                            // Si el usuario tiene foto de Google, la mostramos. Si no, el ícono.
-                                            Icon(
-                                                Icons.Default.AccountCircle,
-                                                contentDescription = null,
-                                                modifier = Modifier
-                                                    .fillMaxSize()
-                                                    .padding(4.dp),
-                                                tint = Color.White
-                                            )
+                                            // Si currentUser tiene foto de Google (photoUrl), AsyncImage la carga sola.
+                                            // Si no, muestra el icono por defecto.
+                                            if (photoUrl != null) {
+                                                AsyncImage(
+                                                    model = photoUrl, // <--- Usamos la variable limpia
+                                                    contentDescription = "Foto de perfil",
+                                                    modifier = Modifier.fillMaxSize(),
+                                                    contentScale = ContentScale.Crop
+                                                )
+                                            } else {
+                                                Icon(
+                                                    Icons.Default.AccountCircle,
+                                                    contentDescription = null,
+                                                    modifier = Modifier
+                                                        .fillMaxSize()
+                                                        .padding(4.dp),
+                                                    tint = Color.White
+                                                )
+                                            }
                                         }
                                         Spacer(modifier = Modifier.height(12.dp))
                                         Text(
-                                            text = currentUser?.displayName ?: "Usuario Master",
+                                            text = userName,
                                             style = typography.titleLarge,
                                             color = Color.White,
                                             fontWeight = FontWeight.Black,
                                             letterSpacing = 1.sp
                                         )
                                         Text(
-                                            text = currentUser?.email ?: "",
+                                            text = userEmail,
                                             style = typography.bodySmall,
                                             color = Color.White.copy(alpha = 0.6f)
                                         )
