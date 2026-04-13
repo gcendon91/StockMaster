@@ -24,6 +24,9 @@ class ProductViewModel : ViewModel() {
     private val db = Firebase.firestore // Referencia a la base de datos
     private val auth = FirebaseAuth.getInstance()
 
+    var dynamicEmojiMap by mutableStateOf<Map<String, String>>(emptyMap())
+        private set
+
     private val _products = MutableStateFlow<List<Product>>(emptyList())
     val products: StateFlow<List<Product>> = _products.asStateFlow()
 
@@ -45,8 +48,28 @@ class ProductViewModel : ViewModel() {
             setupUserAndHousehold(uid)
         }
         listenToCategories()
+        listenToEmojiConfig()
     }
 
+    private fun listenToEmojiConfig() {
+        // Apuntamos al documento 'visuals' dentro de la colección 'config'
+        db.collection("config").document("visuals")
+            .addSnapshotListener { snapshot, e ->
+                if (e != null) {
+                    Log.w("FIREBASE", "Error escuchando emojis", e)
+                    return@addSnapshotListener
+                }
+
+                if (snapshot != null && snapshot.exists()) {
+                    // Traemos el campo 'emojiMap' que es un Mapa en Firebase
+                    val map = snapshot.get("emojiMap") as? Map<String, String>
+                    if (map != null) {
+                        dynamicEmojiMap = map
+                        Log.d("FIREBASE", "Emojis actualizados desde la nube: ${map.size} cargados")
+                    }
+                }
+            }
+    }
 
     private fun listenToProducts() {
         val hid = householdId ?: return

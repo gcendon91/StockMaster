@@ -25,51 +25,52 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.gcendon.stockmaster.data.Product
 import com.gcendon.stockmaster.ui.utils.IconUtils
+import com.gcendon.stockmaster.ui.viewmodel.ProductViewModel
 
 @Composable
 fun ProductCard(
-    item: Product, estaSeleccionado: Boolean, modoSeleccionActivo: Boolean
+    item: Product,
+    estaSeleccionado: Boolean,
+    modoSeleccionActivo: Boolean,
+    productViewModel: ProductViewModel = viewModel() // <--- Agregamos el ViewModel aquí
 ) {
     val colorEstado = when {
-        // ROJO: Menos del 10% del mínimo (Prácticamente nada)
         item.currentStock <= item.minStock * 0.1 -> Color(0xFFE53935)
-
-        // AMARILLO: Menos del mínimo (Ya hay que comprar)
         item.currentStock < item.minStock -> Color(0xFFFFA000)
-
-        // VERDE: Igual o mayor al mínimo (Estado ideal)
         else -> Color(0xFF43A047)
     }
 
-    val stockFormateado = "%.1f".format(item.currentStock)
+    val stockFormateado = if (item.currentStock % 1.0 == 0.0)
+        item.currentStock.toInt().toString()
+    else
+        "%.1f".format(item.currentStock)
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .height(170.dp),
-        shape = RoundedCornerShape(20.dp), // Un poquito menos redondeado para estética compacta
+        shape = RoundedCornerShape(20.dp),
         elevation = CardDefaults.cardElevation(
-            defaultElevation = if (estaSeleccionado) 10.dp else 4.dp // Elevación sutil
+            defaultElevation = if (estaSeleccionado) 10.dp else 4.dp
         ),
-        border = if (estaSeleccionado) BorderStroke(
-            2.dp, Color(0xFF1A237E)
-        ) else null,
+        border = if (estaSeleccionado) BorderStroke(2.dp, Color(0xFF1A237E)) else null,
         colors = CardDefaults.cardColors(
             containerColor = if (estaSeleccionado) Color(0xFFE8EAF6) else Color.White
         )
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-
-            // Indicador visual de stock (una barrita lateral sutil)
+            // Indicador lateral de stock
             Box(
                 modifier = Modifier
                     .fillMaxHeight()
-                    .width(4.dp) // <--- Achicamos la barra (de 6 a 4)
+                    .width(4.dp)
                     .background(colorEstado)
                     .align(Alignment.CenterStart)
             )
@@ -80,67 +81,70 @@ fun ProductCard(
                     onCheckedChange = null,
                     modifier = Modifier
                         .align(Alignment.TopEnd)
-                        .padding(4.dp) // <--- Padding de checkbox reducido
+                        .padding(4.dp)
                 )
             }
 
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    // <--- CAMBIO 2: Paddings internos compactados
                     .padding(start = 12.dp, end = 10.dp, top = 8.dp, bottom = 8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.SpaceBetween // <--- Mejor distribución del espacio reducido
+                verticalArrangement = Arrangement.SpaceBetween
             ) {
-                // Emoji Protagónico (Apenas más chico)
+                // 1. EMOJI DINÁMICO (Viene de la nube o Local)
                 Text(
-                    text = IconUtils.getProductEmoji(item.name, item.category),
-                    fontSize = 36.sp, // <--- CAMBIO 3: Emoji reducido (de 44 a 36)
+                    text = IconUtils.getProductEmoji(
+                        item.name,
+                        item.category,
+                        productViewModel.dynamicEmojiMap // <--- Usamos el mapa del VM
+                    ),
+                    fontSize = 36.sp,
                     modifier = Modifier.padding(bottom = 2.dp)
                 )
 
-                // Nombre en negro sólido (Ahora con soporte para 2 líneas)
+                // 2. NOMBRE (Soporte para 2 líneas y centrado)
                 Text(
                     text = item.name.uppercase(),
                     style = MaterialTheme.typography.titleSmall.copy(
-                        lineHeight = 16.sp // <--- Clave: Achicamos el interlineado para que las 2 líneas no ocupen tanto
+                        lineHeight = 16.sp
                     ),
                     fontWeight = FontWeight.Black,
                     color = Color(0xFF212121),
-                    maxLines = 2, // <--- CAMBIO CLAVE: Permitimos que use un segundo renglón
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center, // <--- Lo centramos para que si hay 2 líneas quede estético
+                    textAlign = TextAlign.Center, // <--- Texto centrado
                     letterSpacing = 0.5.sp,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 4.dp) // Un poquito de aire lateral antes de que el texto toque los bordes
+                        .padding(horizontal = 4.dp)
                 )
 
-                // Stock con tipografía pesada (Compactado)
+                // 3. STOCK
                 Row(verticalAlignment = Alignment.Bottom) {
                     Text(
                         text = stockFormateado,
-                        style = MaterialTheme.typography.titleLarge, // <--- CAMBIO 5: Número más compacto (de headline a titleLarge)
+                        style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.ExtraBold,
                         color = colorEstado,
-                        lineHeight = 20.sp // Forzamos altura de línea compacta
+                        lineHeight = 20.sp
                     )
                     Spacer(modifier = Modifier.width(3.dp))
                     Text(
                         text = item.unit,
-                        style = MaterialTheme.typography.labelSmall, // <--- Unidad más chica
+                        style = MaterialTheme.typography.labelSmall,
                         color = Color.Gray,
-                        modifier = Modifier.padding(bottom = 2.dp) // Alineación visual
+                        modifier = Modifier.padding(bottom = 2.dp)
                     )
                 }
 
-                // Categoría como un "Badge" más limpio y compacto
+                // 4. CATEGORÍA (Badge)
                 Surface(
-                    color = Color(0xFFF5F5F5), shape = RoundedCornerShape(6.dp) // Bordes más finos
+                    color = Color(0xFFF5F5F5),
+                    shape = RoundedCornerShape(6.dp)
                 ) {
                     Text(
                         text = item.category,
-                        // <--- CAMBIO 6: Padding de badge reducido
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                         style = MaterialTheme.typography.labelSmall,
                         fontWeight = FontWeight.Bold,

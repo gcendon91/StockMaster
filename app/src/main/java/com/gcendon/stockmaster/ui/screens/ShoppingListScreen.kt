@@ -71,8 +71,7 @@ import com.gcendon.stockmaster.ui.viewmodel.ProductViewModel
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ShoppingListScreen(
-    viewModel: ProductViewModel,
-    onBack: () -> Unit
+    viewModel: ProductViewModel, onBack: () -> Unit
 ) {
     val itemsParaComprar by viewModel.shoppingList.collectAsState()
     val focusManager = LocalFocusManager.current
@@ -115,8 +114,7 @@ fun ShoppingListScreen(
         )
 
         Scaffold(
-            containerColor = Color.Transparent,
-            topBar = {
+            containerColor = Color.Transparent, topBar = {
                 CenterAlignedTopAppBar(
                     title = {
                         Text(
@@ -125,18 +123,15 @@ fun ShoppingListScreen(
                             letterSpacing = 2.sp,
                             color = Color.White
                         )
-                    },
-                    navigationIcon = {
+                    }, navigationIcon = {
                         IconButton(onClick = onBack) {
                             Icon(Icons.Default.ArrowBack, null, tint = Color.White)
                         }
-                    },
-                    colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    }, colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                         containerColor = Color.Transparent
                     )
                 )
-            }
-        ) { innerPadding ->
+            }) { innerPadding ->
             // CONTENEDOR VERTICAL (Buscador + Lista)
             Column(
                 modifier = Modifier
@@ -211,24 +206,17 @@ fun ShoppingListScreen(
                     }
                 } else {
                     LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(
-                            start = 16.dp,
-                            end = 16.dp,
-                            top = 12.dp,
-                            bottom = 80.dp
-                        ),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        modifier = Modifier.fillMaxSize(), contentPadding = PaddingValues(
+                            start = 16.dp, end = 16.dp, top = 12.dp, bottom = 80.dp
+                        ), verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(itemsFiltrados) { prod ->
                             val faltante = (prod.minStock - prod.currentStock).coerceAtLeast(0.0)
-                            // Rojo si queda casi nada (10%), si no, un Naranja/Ámbar fuerte
                             val colorUrgencia =
                                 if (prod.currentStock <= prod.minStock * 0.1) Color(0xFFE53935) else Color(
                                     0xFFFFA000
                                 )
 
-                            // Formateo de número: 1.0 -> 1
                             val faltanteTxt = if (faltante % 1.0 == 0.0) faltante.toInt()
                                 .toString() else "%.1f".format(faltante)
 
@@ -244,21 +232,27 @@ fun ShoppingListScreen(
                                         .fillMaxWidth(),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    // 1. IZQUIERDA: ICONO + NOMBRE (Ancla visual)
+                                    // 1. IZQUIERDA: ICONO DINÁMICO (Firebase + Local)
                                     Text(
-                                        text = IconUtils.getProductEmoji(prod.name, prod.category),
-                                        fontSize = 28.sp
+                                        text = IconUtils.getProductEmoji(
+                                            prod.name,
+                                            prod.category,
+                                            viewModel.dynamicEmojiMap // <--- Conexión con la nube
+                                        ), fontSize = 28.sp
                                     )
 
                                     Spacer(modifier = Modifier.width(12.dp))
 
+                                    // 2. NOMBRE CON SOPORTE PARA 2 LÍNEAS
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
                                             text = prod.name.uppercase(),
-                                            style = MaterialTheme.typography.titleMedium,
+                                            style = MaterialTheme.typography.titleSmall.copy(
+                                                lineHeight = 16.sp // Interlineado compacto
+                                            ),
                                             fontWeight = FontWeight.Black,
                                             color = Color(0xFF212121),
-                                            maxLines = 1,
+                                            maxLines = 2, // <--- Ahora soporta 2 renglones
                                             overflow = TextOverflow.Ellipsis
                                         )
                                         Text(
@@ -269,7 +263,7 @@ fun ShoppingListScreen(
                                         )
                                     }
 
-                                    // 2. DERECHA: SOLO EL FALTANTE
+                                    // 3. DERECHA: INFO DE FALTANTE
                                     Column(
                                         horizontalAlignment = Alignment.End,
                                         modifier = Modifier.padding(horizontal = 4.dp)
@@ -283,7 +277,7 @@ fun ShoppingListScreen(
                                         Row(verticalAlignment = Alignment.Bottom) {
                                             Text(
                                                 text = faltanteTxt,
-                                                fontSize = 26.sp, // Tamaño grande e impactante
+                                                fontSize = 26.sp,
                                                 fontWeight = FontWeight.Black,
                                                 color = colorUrgencia,
                                                 lineHeight = 26.sp
@@ -291,7 +285,7 @@ fun ShoppingListScreen(
                                             Spacer(modifier = Modifier.width(2.dp))
                                             Text(
                                                 text = prod.unit,
-                                                style = MaterialTheme.typography.bodyMedium,
+                                                style = MaterialTheme.typography.labelSmall,
                                                 color = colorUrgencia,
                                                 fontWeight = FontWeight.Bold,
                                                 modifier = Modifier.padding(bottom = 2.dp)
@@ -301,19 +295,17 @@ fun ShoppingListScreen(
 
                                     Spacer(modifier = Modifier.width(8.dp))
 
-                                    // 3. BOTÓN (Verde y moderno)
+                                    // 4. BOTÓN DE COMPRA
                                     IconButton(
                                         onClick = {
                                             productoSeleccionado = prod
                                             cantidadAComprar =
                                                 "%.1f".format(faltante).replace(",", ".")
                                             showDialog = true
-                                        },
-                                        modifier = Modifier
+                                        }, modifier = Modifier
                                             .size(38.dp)
                                             .background(
-                                                Color(0xFF43A047),
-                                                RoundedCornerShape(10.dp)
+                                                Color(0xFF43A047), RoundedCornerShape(10.dp)
                                             )
                                     ) {
                                         Icon(
@@ -415,10 +407,8 @@ fun ShoppingListScreen(
                                 viewModel.purchaseProduct(productoSeleccionado!!, cantidad)
                                 showDialog = false
                             }
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF1A237E),
-                            contentColor = Color.White
+                        }, colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF1A237E), contentColor = Color.White
                         )
                     ) {
                         Text("Sumar Stock")
@@ -428,8 +418,7 @@ fun ShoppingListScreen(
                     TextButton(onClick = { showDialog = false }) {
                         Text("Cancelar", color = Color.Gray)
                     }
-                }
-            )
+                })
         }
     }
 }
