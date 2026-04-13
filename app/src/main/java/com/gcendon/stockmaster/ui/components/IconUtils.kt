@@ -7,13 +7,24 @@ object IconUtils {
         return when {
             // --- 1. CASOS ESPECÍFICOS / LARGOS (Para evitar choques) ---
             // Ponemos "salsa" antes que "sal"
-            n.contains("salsa") || n.contains("ketchup") || n.contains("mayonesa") || n.contains("mostaza") -> "🥫"
+            n.contains("salsa") || n.contains("ketchup") || n.contains("mayonesa") || n.contains("mostaza") || n.contains(
+                "barbacoa"
+            ) -> "🥫"
 
             // Ponemos "estropajo" antes que "ajo"
             n.contains("estropajo") || n.contains("esponja") || n.contains("trapo") -> "🧽"
 
             // Ponemos "café en granos" antes que "café"
             n.contains("café en granos") || n.contains("cafe en granos") -> "🫘"
+
+            n.contains("dientes") || n.contains("cepillos de dientes") -> "🪥"
+
+            n.contains("desodorante") -> "💨"
+
+            n.contains("guantes de cocina") -> "🧤"
+            n.contains("tomate") -> "🍅"
+            n.contains("detergente") -> "🧼"
+            n.contains("protectores diarios") -> "♀️"
 
             // --- 2. CONDIMENTOS Y ESPECIAS ---
             n.contains("ajo") -> "🧄" // Ahora solo entra acá si no es estropajo
@@ -33,7 +44,7 @@ object IconUtils {
             n.contains("albahaca") || n.contains("orégano") || n.contains("oregano") || n.contains("provenzal") || n.contains(
                 "hierba"
             ) -> "🌿"
-            n.contains("comino") || n.contains("curcuma") || n.contains("curry") || n.contains("canela") -> "🍂"
+            n.contains("comino") || n.contains("cúrcuma") || n.contains("curry") || n.contains("canela") -> "🍂"
 
             // --- 3. CARNICERÍA Y PROTEÍNAS ---
             n.contains("pollo") || n.contains("pechuga") -> "🍗"
@@ -72,10 +83,10 @@ object IconUtils {
             n.contains("choclo") -> "🌽"
 
             // --- 6. VERDULERÍA ---
-            n.contains("papa") || n.contains("batata") -> "🥔"
+            n.contains("papa") || n.contains("batata") || n.contains("boniato") -> "🥔"
             n.contains("cebolla") -> "🧅"
+            n.contains("naranja") -> "🍊"
             n.contains("morron") || n.contains("morrón") -> "🫑"
-            n.contains("tomate") -> "🍅"
             n.contains("limon") || n.contains("limón") -> "🍋"
             n.contains("banana") -> "🍌"
             n.contains("manzana") -> "🍎"
@@ -83,12 +94,18 @@ object IconUtils {
             n.contains("lechuga") || n.contains("acelga") || n.contains("hoja") -> "🥬"
 
             // --- 7. LIMPIEZA E HIGIENE ---
-            n.contains("detergente") || n.contains("jabon liquido") -> "🧼"
+            n.contains("detergente") || n.contains("jabón liquido") || n.contains("jabón") -> "🧼"
             n.contains("lavandina") || n.contains("limpiador") || n.contains("cif") -> "✨"
             n.contains("papel higiénico") || n.contains("higiénico") || n.contains("rollo") -> "🧻"
             n.contains("shampoo") || n.contains("acondicionador") -> "🚿"
-            n.contains("dentifrico") || n.contains("dientes") -> "🪥"
+            n.contains("dentifrico") -> "🪥"
             n.contains("dentastix") -> "🐕"
+
+            n.contains("algodón") -> "☁️"
+
+            n.contains("pañuelos") -> "🤧"
+
+            n.contains("protectores diarios") || n.contains("tampones") || n.contains("toallitas") -> "♀️"
 
             // --- RESPALDO POR CATEGORÍA ---
             else -> getCategoryBackupEmoji(category)

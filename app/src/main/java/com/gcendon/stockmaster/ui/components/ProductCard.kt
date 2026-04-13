@@ -99,15 +99,21 @@ fun ProductCard(
                     modifier = Modifier.padding(bottom = 2.dp)
                 )
 
-                // Nombre en negro sólido (Un punto más chico)
+                // Nombre en negro sólido (Ahora con soporte para 2 líneas)
                 Text(
                     text = item.name.uppercase(),
-                    style = MaterialTheme.typography.titleSmall, // <--- CAMBIO 4: Nombre más compacto (de small a tiny)
+                    style = MaterialTheme.typography.titleSmall.copy(
+                        lineHeight = 16.sp // <--- Clave: Achicamos el interlineado para que las 2 líneas no ocupen tanto
+                    ),
                     fontWeight = FontWeight.Black,
                     color = Color(0xFF212121),
-                    maxLines = 1,
+                    maxLines = 2, // <--- CAMBIO CLAVE: Permitimos que use un segundo renglón
                     overflow = TextOverflow.Ellipsis,
-                    letterSpacing = 0.5.sp // <--- Compactamos el espaciado
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center, // <--- Lo centramos para que si hay 2 líneas quede estético
+                    letterSpacing = 0.5.sp,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 4.dp) // Un poquito de aire lateral antes de que el texto toque los bordes
                 )
 
                 // Stock con tipografía pesada (Compactado)
