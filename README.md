@@ -16,27 +16,30 @@ in real-time, manage shopping lists, and track stock levels with a sleek, modern
   <img src="https://raw.githubusercontent.com/gcendon91/StockMaster/master/screenshots/shopping_list.png" width="30%" />
 </div>
 
-### ✨ Key Features (v1.3.0)
+### ✨ Key Features (v1.4.0)
 
-* 👤 **Profile Personalization:** Integrated **Firebase Storage** to upload custom profile pictures.
-  Manage your identity with a modern menu (Google Sync, Custom Upload, or Avatar removal).
+* ☁️ **Cloud-Driven Visuals:** Integrated a **Dynamic Emoji System** managed via Firebase Firestore.
+  Icons are updated remotely in real-time without needing an app update.
+* 📊 **Smart Inventory Steppers:** New `ProductCard` UI with intelligent `+` and `-` buttons. The app
+  automatically calculates increments based on units (e.g., **100g** for weights, **1 unit** for
+  items).
+* ⚡ **Zero-Friction Reset:** Long-press the minus button to instantly set stock to zero—perfect for
+  items that just ran out.
+* ✏️ **Quick-Edit Dialog:** Tap the stock number to open a dedicated adjustment overlay. Features *
+  *Auto-Focus** and **Smart Text Selection** for lightning-fast manual entries.
 * 🏠 **Collaborative Households:** Share your pantry using **6-character invite codes**. Optimized
   join flow with real-time feedback and clear error states.
-* ⚡ **Real-time Sync:** Powered by **Firebase Firestore**, every change is updated instantly across all connected devices.
-* 🛒 **Streamlined Shopping List:** Cleaned UI focusing on "Missing" amounts. Restored the classic
-  large-text urgency with a modern "Slim Card" design and **Quick Purchase** buttons.
-* 📦 **Infinite-Add Flow:** Quickly populate your inventory with an optimized `AddProductDialog` that
-  stays open and auto-focuses for multiple consecutive entries.
-* 📐 **Visual Consistency:** Unified design system across Home and Shopping List using a shared DNA:
-  18dp corner radius, 3dp elevation, and standardized 8dp spacing.
+* 👤 **Profile Personalization:** Integrated **Firebase Storage** for custom profile pictures with a
+  modern management menu.
+* 📐 **UX Refinement:** Support for **2-line product names** and enhanced visual hierarchy. Controls
+  automatically disable during multi-selection mode to prevent accidental edits.
 * 🔐 **Secure Auth:** Integrated with **Google Sign-In (Credential Manager)** and Email/Password.
-* 🍳 **Modern Aesthetics:** "Kitchen-themed" UI with glassmorphism, optimized dark-overlay visuals, and intuitive UX.
 
 ### 🛠️ Tech Stack
 
 * **Language:** Kotlin + Coroutines & Flow.
 * **UI:** Jetpack Compose (Material Design 3).
-* **Image Loading:** Coil for asynchronous profile and product images.
+* **Image Loading:** Coil for asynchronous images.
 * **Backend:** Firebase (Firestore, Authentication & Storage).
 * **Architecture:** MVVM (Model-View-ViewModel).
 
@@ -49,22 +52,24 @@ para la gestión colaborativa de inventarios hogareños. Permite a familias o co
 sincronizar su despensa en tiempo real, gestionar listas de compras y controlar niveles de stock con
 una interfaz moderna y elegante.
 
-### ✨ Características (v1.3.0)
+### ✨ Características (v1.4.0)
 
-* 👤 **Personalización de Perfil:** Integración con **Firebase Storage** para subir fotos de perfil.
-  Gestioná tu identidad desde un menú moderno (Sincronización con Google, Carga personalizada o
-  eliminar avatar).
+* ☁️ **Visuales desde la Nube:** Sistema de **Iconos Dinámicos** gestionado vía Firebase Firestore.
+  Los emojis se actualizan de forma remota y en tiempo real sin actualizar la app.
+* 📊 **Controles de Stock Inteligentes:** Nueva interfaz en `ProductCard` con botones `+` y `-`. La
+  app calcula automáticamente el salto según la unidad (ej: **100g** para pesos, **1 unidad** para
+  productos sueltos).
+* ⚡ **Reseteo Instantáneo:** Mantén presionado el botón de restar para poner el stock en cero
+  inmediatamente cuando un producto se termina.
+* ✏️ **Edición Rápida de Precisión:** Toca el número de stock para abrir un diálogo de ajuste.
+  Incluye **Auto-Foco** y **Selección Automática** para que solo tengas que tocar y escribir.
 * 🏠 **Hogares Colaborativos:** Compartí tu despensa usando **códigos de invitación de 6 caracteres
   **. Flujo de unión optimizado con estados de carga claros.
-* ⚡ **Sincronización en Tiempo Real:** Gracias a **Firebase Firestore**, cada cambio se refleja al instante en todos los dispositivos.
-* 🛒 **Lista de Compras Optimizada:** UI limpia enfocada en lo que falta comprar. Recuperamos la
-  claridad visual del "Semáforo de Stock" con un diseño de tarjetas horizontales más eficiente.
-* 📦 **Flujo de Carga Infinita:** Diálogo de "Agregar Producto" optimizado con auto-foco para
-  permitir cargas rápidas y consecutivas del inventario sin cerrar la ventana.
-* 📐 **Consistencia Visual:** Sistema de diseño unificado entre la Home y la Shopping List: radio de
-  bordes de 18dp, elevaciones de 3dp y espaciado estándar de 8dp.
+* 👤 **Personalización de Perfil:** Integración con **Firebase Storage** para subir fotos de perfil y
+  gestión de identidad moderna.
+* 📐 **Refinamiento de UX:** Soporte para **nombres de 2 líneas** y jerarquía visual mejorada. Los
+  controles se bloquean durante la selección múltiple para evitar errores.
 * 🔐 **Acceso Seguro:** Integración con **Google Sign-In (Credential Manager)** y Email para un ingreso rápido.
-* 🍳 **Estética Moderna:** Interfaz con temática de cocina, efectos de "glassmorphism" y optimización visual de alto contraste para uso en ambientes luminosos (como el supermercado).
 
 ---
 
@@ -72,8 +77,8 @@ una interfaz moderna y elegante.
 
 You can download the latest APK from the releases section / Podés descargar el último APK desde la
 sección de releases:
-👉 [**Download Stock Master v1.3.0
-**](https://github.com/gcendon91/StockMaster/releases/download/v1.3.0/StockMaster_v1.3.0.apk)
+👉 [**Download Stock Master v1.4.0
+**](https://github.com/gcendon91/StockMaster/releases/download/v1.4.0/StockMaster_v1.4.0.apk)
 
 ---
 *Developed by Gonzalo Cendón - 2026*

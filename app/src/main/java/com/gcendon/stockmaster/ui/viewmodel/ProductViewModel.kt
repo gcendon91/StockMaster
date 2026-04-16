@@ -328,4 +328,28 @@ class ProductViewModel : ViewModel() {
             }
     }
 
+    fun quickUpdateStock(product: Product, isAdding: Boolean) {
+        // Definimos el salto según la unidad
+        val step = when (product.unit.lowercase().trim()) {
+            "g", "gr", "gramos" -> 10.0
+            "ml" -> 100.0
+            "kg", "l", "litros" -> 0.5
+            else -> 1.0 // Para "unidades", "packs", "sobres", etc.
+        }
+
+        val delta = if (isAdding) step else -step
+        val finalStock = (product.currentStock + delta).coerceAtLeast(0.0)
+
+        db.collection("products").document(product.id).update("currentStock", finalStock)
+    }
+
+    fun resetStock(product: Product) {
+        db.collection("products").document(product.id).update("currentStock", 0.0)
+    }
+
+    fun updateStockDirectly(product: Product, newStock: Double) {
+        db.collection("products").document(product.id)
+            .update("currentStock", newStock.coerceAtLeast(0.0))
+    }
+
 }

@@ -16,8 +16,12 @@ android {
         applicationId = "com.gcendon.stockmaster"
         minSdk = 24
         targetSdk = 36
-        versionCode = 4
-        versionName = "1.3.0"
+        //VERSION CODE: Incrementalo en 1 (siempre es un número entero)
+        // Es el que usa Google Play para saber si esta app es más nueva que la anterior.
+        versionCode = 5
+        //VERSION NAME: Poné tu nuevo "Badge" de versión
+        // Es el que ven los usuarios.
+        versionName = "1.4.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -49,6 +53,7 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
+    implementation(libs.androidx.material3)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
