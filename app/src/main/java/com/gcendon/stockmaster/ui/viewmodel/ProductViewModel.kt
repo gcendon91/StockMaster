@@ -228,17 +228,35 @@ class ProductViewModel : ViewModel() {
             onResult("Por favor, completa los campos")
             return
         }
+
         auth.createUserWithEmailAndPassword(e.trim(), p.trim()).addOnSuccessListener { result ->
-            val uid = result.user?.uid ?: ""
-            // Creamos el perfil inicial
+            val user = result.user
+            val uid = user?.uid ?: ""
+
+            // 1. Creamos el perfil inicial en Firestore
             val userData = hashMapOf(
-                "email" to e.trim(), "householdId" to uid // Su propia casa por defecto
+                "email" to e.trim(),
+                "householdId" to uid
             )
+
             db.collection("users").document(uid).set(userData)
-                .addOnSuccessListener { onResult(null) }
+                .addOnSuccessListener {
+                    user?.sendEmailVerification()
+                        ?.addOnCompleteListener { task ->
+                            // ¡ESTA ES LA CLAVE!
+                            // Lo deslogueamos apenas se registra para que no entre por la ventana.
+                            auth.signOut()
+
+                            if (task.isSuccessful) {
+                                onResult(null)
+                            } else {
+                                onResult("Cuenta creada, pero falló el envío del mail.")
+                            }
+                        }
+                }
                 .addOnFailureListener { onResult("Error al crear perfil en base de datos") }
+
         }.addOnFailureListener { exception ->
-            // Llamamos al traductor pasándole la excepción completa
             val mensajeAmigable = mapFirebaseError(exception)
             onResult(mensajeAmigable)
         }
@@ -350,6 +368,25 @@ class ProductViewModel : ViewModel() {
     fun updateStockDirectly(product: Product, newStock: Double) {
         db.collection("products").document(product.id)
             .update("currentStock", newStock.coerceAtLeast(0.0))
+    }
+
+    fun resetPassword(email: String, onResult: (String?) -> Unit) {
+        FirebaseAuth.getInstance()
+            .sendPasswordResetEmail(email)
+            .addOnCompleteListener { task ->
+                if (task.isSuccessful) {
+                    onResult(null) // Todo bien
+                } else {
+                    // Manejo de errores amigable
+                    val errorMsg =
+                        when ((task.exception as? com.google.firebase.auth.FirebaseAuthException)?.errorCode) {
+                            "ERROR_USER_NOT_FOUND" -> "No existe una cuenta con este email."
+                            "ERROR_INVALID_EMAIL" -> "El formato del email no es válido."
+                            else -> task.exception?.localizedMessage ?: "Error al enviar el correo."
+                        }
+                    onResult(errorMsg)
+                }
+            }
     }
 
 }

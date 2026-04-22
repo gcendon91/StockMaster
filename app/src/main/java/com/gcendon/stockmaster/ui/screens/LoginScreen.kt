@@ -1,5 +1,6 @@
 package com.gcendon.stockmaster.ui.screens
 
+import android.widget.Toast
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
@@ -7,19 +8,23 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
@@ -34,6 +39,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -55,6 +61,9 @@ fun LoginScreen(viewModel: ProductViewModel) {
     var errorMessage by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     val credentialManager = androidx.credentials.CredentialManager.create(context)
+    var showResetPasswordDialog by remember { mutableStateOf(false) }
+    var emailToReset by remember { mutableStateOf("") }
+    var showVerificationSent by remember { mutableStateOf(false) }
 
     fun handleGoogleSignIn() {
         val googleIdOption =
@@ -120,7 +129,7 @@ fun LoginScreen(viewModel: ProductViewModel) {
                 letterSpacing = 10.sp,
                 textAlign = TextAlign.Center,
                 style = androidx.compose.ui.text.TextStyle(
-                    shadow = androidx.compose.ui.graphics.Shadow(
+                    shadow = Shadow(
                         color = Color.Black.copy(alpha = 0.5f),
                         offset = androidx.compose.ui.geometry.Offset(4f, 4f),
                         blurRadius = 12f
@@ -161,8 +170,7 @@ fun LoginScreen(viewModel: ProductViewModel) {
                 onValueChange = { password = it },
                 placeholder = { Text("Contraseña", color = Color.White.copy(alpha = 0.7f)) },
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 24.dp),
+                    .fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
                 leadingIcon = {
                     Icon(
@@ -181,6 +189,30 @@ fun LoginScreen(viewModel: ProductViewModel) {
                     unfocusedTextColor = Color.White
                 )
             )
+            if (!isRegistering) {
+                TextButton(
+                    onClick = { showResetPasswordDialog = true },
+                    modifier = Modifier
+                        .align(Alignment.End)
+                        .offset(y = (-8).dp), // Subimos el texto para que "abrace" al input
+                    contentPadding = PaddingValues(0.dp) // Quitamos el padding interno del botón
+                ) {
+                    Text(
+                        text = "¿Olvidaste tu contraseña?",
+                        color = Color.White.copy(alpha = 0.9f),
+                        fontSize = 14.sp, // Aumentamos a un tamaño estándar moderno
+                        fontWeight = FontWeight.SemiBold, // Un poco más de peso para que no sea "difuso"
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            shadow = Shadow(
+                                color = Color.Black,
+                                blurRadius = 4f
+                            ) // Sombra sutil para legibilidad
+                        )
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
             if (errorMessage != null) {
                 Surface(
                     color = Color(0xFFD32F2F).copy(alpha = 0.8f), // Rojo fuerte pero integrado
@@ -218,12 +250,39 @@ fun LoginScreen(viewModel: ProductViewModel) {
                     errorMessage = null
 
                     if (isRegistering) {
+                        // --- MODO REGISTRO ---
                         viewModel.registerWithEmail(email, password) { error ->
-                            if (error != null) errorMessage = error
+                            if (error != null) {
+                                errorMessage = error
+                            } else {
+                                // Si no hay error, mostramos el aviso de "Revisá tu mail"
+                                showVerificationSent = true
+                            }
                         }
                     } else {
+                        // --- MODO LOGIN ---
                         viewModel.loginWithEmail(email, password) { error ->
-                            if (error != null) errorMessage = error
+                            if (error == null) {
+                                val auth = com.google.firebase.auth.FirebaseAuth.getInstance()
+                                val user = auth.currentUser
+
+                                // 1. Le pedimos a Firebase que refresque el estado del usuario
+                                user?.reload()?.addOnCompleteListener { task ->
+                                    if (user?.isEmailVerified == true) {
+                                        // 2. Al estar verificado, la 'isFullyAuthenticated' del MainActivity
+                                        // se vuelve true y te deja pasar automáticamente.
+                                        errorMessage = null
+                                    } else {
+                                        // 3. Si sigue sin verificar, lo deslogueamos para que el userState
+                                        // en MainActivity vuelva a ser null y no intente entrar.
+                                        auth.signOut()
+                                        errorMessage =
+                                            "Tu cuenta aún no ha sido verificada. Revisá tu email."
+                                    }
+                                }
+                            } else {
+                                errorMessage = error
+                            }
                         }
                     }
                 },
@@ -276,6 +335,107 @@ fun LoginScreen(viewModel: ProductViewModel) {
                     Text("Continuar con Google", fontWeight = FontWeight.SemiBold)
                 }
             }
+        }
+        if (showResetPasswordDialog) {
+            AlertDialog(
+                onDismissRequest = { showResetPasswordDialog = false },
+                containerColor = Color(0xFF1A1A1A).copy(alpha = 0.95f), // Fondo oscuro premium
+                shape = RoundedCornerShape(28.dp), // Esquinas bien redondeadas estilo Material 3
+                title = {
+                    Text(
+                        "Restablecer contraseña",
+                        color = Color.White,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp
+                    )
+                },
+                text = {
+                    Column {
+                        Text(
+                            "Ingresá tu correo y te enviaremos un enlace para que crees una nueva clave.",
+                            color = Color.White.copy(alpha = 0.7f),
+                            fontSize = 14.sp
+                        )
+                        Spacer(modifier = Modifier.height(20.dp))
+                        OutlinedTextField(
+                            value = emailToReset,
+                            onValueChange = { emailToReset = it },
+                            placeholder = {
+                                Text(
+                                    "email@ejemplo.com",
+                                    color = Color.White.copy(alpha = 0.4f)
+                                )
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White,
+                                focusedBorderColor = Color.White,
+                                unfocusedBorderColor = Color.White.copy(alpha = 0.3f)
+                            )
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            if (emailToReset.isNotEmpty()) {
+                                viewModel.resetPassword(emailToReset) { error ->
+                                    if (error == null) {
+                                        Toast.makeText(
+                                            context,
+                                            "📩 ¡Correo enviado! Revisa tu bandeja.",
+                                            Toast.LENGTH_LONG
+                                        ).show()
+                                    } else {
+                                        errorMessage = error // Usamos tu lógica de error actual
+                                    }
+                                }
+                                showResetPasswordDialog = false
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.White,
+                            contentColor = Color.Black
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Enviar enlace", fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showResetPasswordDialog = false }) {
+                        Text("Cancelar", color = Color.White.copy(alpha = 0.6f))
+                    }
+                }
+            )
+        }
+        if (showVerificationSent) {
+            AlertDialog(
+                onDismissRequest = { showVerificationSent = false },
+                containerColor = Color(0xFF1A1A1A),
+                title = { Text("¡Casi listo!", color = Color.White, fontWeight = FontWeight.Bold) },
+                text = {
+                    Text(
+                        "Te enviamos un link de confirmación a $email. " +
+                                "Por favor, verificalo para poder ingresar a Stock Master.",
+                        color = Color.White.copy(alpha = 0.7f)
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            showVerificationSent = false
+                            isRegistering = false // Lo mandamos al Login para que pruebe entrar
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.White)
+                    ) {
+                        Text("Entendido", color = Color.Black)
+                    }
+                }
+            )
         }
     }
 }

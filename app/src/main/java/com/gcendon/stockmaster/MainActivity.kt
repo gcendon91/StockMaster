@@ -112,6 +112,7 @@ class MainActivity : ComponentActivity() {
             var isUploadingPhoto by remember { mutableStateOf(false) }
             var userState by remember { mutableStateOf(auth.currentUser) }
             var showProfileOptions by remember { mutableStateOf(false) }
+            val isFullyAuthenticated = userState != null && userState?.isEmailVerified == true
 
             val navBackStackEntry by navController.currentBackStackEntryAsState()
             val currentRoute = navBackStackEntry?.destination?.route
@@ -163,10 +164,12 @@ class MainActivity : ComponentActivity() {
                 }
 
                 LaunchedEffect(userState) {
-                    userState?.let { viewModel.setupUserAndHousehold(it.uid) }
+                    if (userState != null && userState?.isEmailVerified == true) {
+                        viewModel.setupUserAndHousehold(userState!!.uid)
+                    }
                 }
 
-                if (userState == null) {
+                if (!isFullyAuthenticated) {
                     LoginScreen(viewModel = viewModel)
                 } else {
                     ModalNavigationDrawer(
