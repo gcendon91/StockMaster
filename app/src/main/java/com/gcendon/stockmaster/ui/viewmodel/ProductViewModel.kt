@@ -43,6 +43,9 @@ class ProductViewModel : ViewModel() {
     var inviteCode by mutableStateOf<String?>(null)
         private set
 
+    var hasSeenOnboarding by mutableStateOf(true) // Por defecto true para no molestar si hay error
+        private set
+
     init {
         auth.currentUser?.uid?.let { uid ->
             setupUserAndHousehold(uid)
@@ -236,7 +239,8 @@ class ProductViewModel : ViewModel() {
             // 1. Creamos el perfil inicial en Firestore
             val userData = hashMapOf(
                 "email" to e.trim(),
-                "householdId" to uid
+                "householdId" to uid,
+                "hasSeenOnboarding" to false
             )
 
             db.collection("users").document(uid).set(userData)
@@ -317,6 +321,7 @@ class ProductViewModel : ViewModel() {
                 householdId = doc.getString("householdId")
                 fetchOrCreateInviteCode() // Buscamos su código de 6 letras
                 listenToProducts()
+                hasSeenOnboarding = doc.getBoolean("has_seen_onboarding") ?: false
             } else {
                 // Usuario nuevo (Email o Google): le creamos su casa inicial
                 val email = auth.currentUser?.email
@@ -332,6 +337,11 @@ class ProductViewModel : ViewModel() {
                 }
             }
         }
+    }
+
+    fun markOnboardingAsSeen(uid: String) {
+        db.collection("users").document(uid).update("has_seen_onboarding", true)
+        hasSeenOnboarding = true
     }
 
     fun purchaseProduct(product: Product, cantidadComprada: Double) {

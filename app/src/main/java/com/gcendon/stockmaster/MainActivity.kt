@@ -83,6 +83,7 @@ import com.gcendon.stockmaster.ui.components.AddProductDialog
 import com.gcendon.stockmaster.ui.screens.CategoryScreen
 import com.gcendon.stockmaster.ui.screens.HomeScreen
 import com.gcendon.stockmaster.ui.screens.LoginScreen
+import com.gcendon.stockmaster.ui.screens.OnboardingScreen
 import com.gcendon.stockmaster.ui.screens.ShoppingListScreen
 import com.gcendon.stockmaster.ui.theme.StockMasterTheme
 import com.gcendon.stockmaster.ui.viewmodel.ProductViewModel
@@ -113,6 +114,7 @@ class MainActivity : ComponentActivity() {
             var userState by remember { mutableStateOf(auth.currentUser) }
             var showProfileOptions by remember { mutableStateOf(false) }
             val isFullyAuthenticated = userState != null && userState?.isEmailVerified == true
+            val needsOnboarding = !viewModel.hasSeenOnboarding
 
             val navBackStackEntry by navController.currentBackStackEntryAsState()
             val currentRoute = navBackStackEntry?.destination?.route
@@ -171,6 +173,11 @@ class MainActivity : ComponentActivity() {
 
                 if (!isFullyAuthenticated) {
                     LoginScreen(viewModel = viewModel)
+                } else if (needsOnboarding) {
+                    // Si está logueado pero no vio el tutorial, lo mandamos acá
+                    OnboardingScreen(onFinished = {
+                        viewModel.markOnboardingAsSeen(userState!!.uid)
+                    })
                 } else {
                     ModalNavigationDrawer(
                         drawerState = drawerState, drawerContent = {
