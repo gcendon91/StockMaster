@@ -24,6 +24,8 @@ class ProductViewModel : ViewModel() {
     private val db = Firebase.firestore // Referencia a la base de datos
     private val auth = FirebaseAuth.getInstance()
 
+    private var currentHouseholdId: String? = null
+
     var dynamicEmojiMap by mutableStateOf<Map<String, String>>(emptyMap())
         private set
 
@@ -46,18 +48,29 @@ class ProductViewModel : ViewModel() {
     var hasSeenOnboarding by mutableStateOf(true) // Por defecto true para no molestar si hay error
         private set
 
+    val DEFAULT_CATEGORIES = listOf(
+        "Almacén",
+        "Bebidas",
+        "Carnicería",
+        "Lácteos",
+        "Limpieza",
+        "Otros",
+        "Pescadería",
+        "Verdulería"
+    )
+
+    fun String.capitalizeFirst(): String = this.lowercase().replaceFirstChar { it.uppercase() }
+
     init {
         auth.currentUser?.uid?.let { uid ->
             setupUserAndHousehold(uid)
         }
-        listenToCategories()
         listenToEmojiConfig()
     }
 
     private fun listenToEmojiConfig() {
         // Apuntamos al documento 'visuals' dentro de la colección 'config'
-        db.collection("config").document("visuals")
-            .addSnapshotListener { snapshot, e ->
+        db.collection("config").document("visuals").addSnapshotListener { snapshot, e ->
                 if (e != null) {
                     Log.w("FIREBASE", "Error escuchando emojis", e)
                     return@addSnapshotListener
@@ -74,10 +87,8 @@ class ProductViewModel : ViewModel() {
             }
     }
 
-    private fun listenToProducts() {
-        val hid = householdId ?: return
-
-        db.collection("products").whereEqualTo("householdId", hid)
+    private fun listenToProducts(hId: String) {
+        db.collection("households").document(hId).collection("products")
             .addSnapshotListener { snapshot, e ->
                 if (e != null) return@addSnapshotListener
 
@@ -132,33 +143,39 @@ class ProductViewModel : ViewModel() {
         }
     }
 
-    private fun listenToCategories() {
-        db.collection("categories").addSnapshotListener { snapshot, _ ->
-            val cats = snapshot?.documents?.mapNotNull { doc ->
-                doc.toObject(Category::class.java)?.copy(id = doc.id)
-            } ?: emptyList()
+    private fun listenToHouseholdCategories(hId: String) {
+        db.collection("households").document(hId)
+            .collection("categories")
+            .addSnapshotListener { snapshot, _ ->
+                val cats = snapshot?.documents?.mapNotNull { doc ->
+                    doc.toObject(Category::class.java)?.copy(id = doc.id)
+                } ?: emptyList()
 
-            if (cats.isEmpty()) {
-                // Si no hay nada, sembramos las básicas
-                seedDefaultCategories()
-            } else {
-                _categories.value = cats
+                if (cats.isEmpty()) {
+                    seedDefaultCategories(hId)
+                } else {
+                    _categories.value = cats.sortedBy { it.name }
+                }
             }
-        }
     }
 
-    private fun seedDefaultCategories() {
-        val defaults = listOf("Almacén", "Lácteos", "Carnicería", "Limpieza", "Verdulería", "Otros")
-        defaults.forEach { name ->
-            addCategory(name)
+    private fun seedDefaultCategories(hId: String) {
+        val batch = db.batch()
+        DEFAULT_CATEGORIES.forEach { name ->
+            val docRef =
+                db.collection("households").document(hId).collection("categories").document()
+            // Guardamos con el formato correcto
+            batch.set(docRef, Category(id = docRef.id, name = name.capitalizeFirst()))
         }
+        batch.commit()
     }
 
     fun addCategory(name: String) {
-        if (name.isNotBlank()) {
-            val newCat = Category(name = name)
-            db.collection("categories").add(newCat)
-        }
+        val hId = currentHouseholdId ?: return
+        val docRef = db.collection("households").document(hId).collection("categories").document()
+
+        // Aquí también forzamos el formato si el usuario escribe "panaderia" -> "Panaderia"
+        docRef.set(Category(id = docRef.id, name = name.trim().capitalizeFirst()))
     }
 
     // Editar una categoría
@@ -190,18 +207,18 @@ class ProductViewModel : ViewModel() {
         val uid = auth.currentUser?.uid ?: return
         val codeUpper = shortCode.uppercase().trim()
 
-        // 1. Buscamos el documento que se llama como el código (ej: "A8J3K2")
         db.collection("invitations").document(codeUpper).get().addOnSuccessListener { doc ->
             if (doc.exists()) {
-                // 2. Si existe, sacamos el ID real de la casa
                 val realId = doc.getString("householdId") ?: ""
 
-                // 3. Actualizamos el perfil del usuario con ese ID real
                 db.collection("users").document(uid).update("householdId", realId)
                     .addOnSuccessListener {
                         this.householdId = realId
-                        fetchOrCreateInviteCode() // Actualizamos el código que vemos
-                        listenToProducts()        // Cargamos los productos nuevos
+
+                        fetchOrCreateInviteCode(realId)
+                        listenToProducts(realId)
+                        listenToHouseholdCategories(realId) //
+
                         onResult(true, "¡Te uniste con éxito!")
                     }
             } else {
@@ -238,15 +255,11 @@ class ProductViewModel : ViewModel() {
 
             // 1. Creamos el perfil inicial en Firestore
             val userData = hashMapOf(
-                "email" to e.trim(),
-                "householdId" to uid,
-                "hasSeenOnboarding" to false
+                "email" to e.trim(), "householdId" to uid, "hasSeenOnboarding" to false
             )
 
-            db.collection("users").document(uid).set(userData)
-                .addOnSuccessListener {
-                    user?.sendEmailVerification()
-                        ?.addOnCompleteListener { task ->
+            db.collection("users").document(uid).set(userData).addOnSuccessListener {
+                user?.sendEmailVerification()?.addOnCompleteListener { task ->
                             // ¡ESTA ES LA CLAVE!
                             // Lo deslogueamos apenas se registra para que no entre por la ventana.
                             auth.signOut()
@@ -257,8 +270,7 @@ class ProductViewModel : ViewModel() {
                                 onResult("Cuenta creada, pero falló el envío del mail.")
                             }
                         }
-                }
-                .addOnFailureListener { onResult("Error al crear perfil en base de datos") }
+            }.addOnFailureListener { onResult("Error al crear perfil en base de datos") }
 
         }.addOnFailureListener { exception ->
             val mensajeAmigable = mapFirebaseError(exception)
@@ -290,11 +302,10 @@ class ProductViewModel : ViewModel() {
         }
     }
 
-    fun fetchOrCreateInviteCode() {
-        val hid = householdId ?: return
+    fun fetchOrCreateInviteCode(hId: String) {
 
         // Buscamos si este hogar ya tiene un código generado
-        db.collection("invitations").whereEqualTo("householdId", hid).get()
+        db.collection("invitations").whereEqualTo("householdId", hId).get()
             .addOnSuccessListener { snapshot ->
                 if (!snapshot.isEmpty) {
                     // Ya existe, lo guardamos en la variable para el Drawer
@@ -304,7 +315,8 @@ class ProductViewModel : ViewModel() {
                     val newShortCode =
                         (1..6).map { (('A'..'Z') + ('0'..'9')).random() }.joinToString("")
                     val data = hashMapOf(
-                        "householdId" to hid, "createdAt" to com.google.firebase.Timestamp.now()
+                        "householdId" to hId,
+                        "createdAt" to com.google.firebase.Timestamp.now()
                     )
                     db.collection("invitations").document(newShortCode).set(data)
                         .addOnSuccessListener { inviteCode = newShortCode }
@@ -317,23 +329,30 @@ class ProductViewModel : ViewModel() {
 
         userRef.get().addOnSuccessListener { doc ->
             if (doc.exists()) {
-                // Usuario ya registrado: cargamos su casa
-                householdId = doc.getString("householdId")
-                fetchOrCreateInviteCode() // Buscamos su código de 6 letras
-                listenToProducts()
+                // 1. Obtenemos el ID y lo guardamos en la variable de la clase
+                val hId = doc.getString("householdId") ?: uid
+                currentHouseholdId = hId
+
+                // 2. Pasamos 'hId' a todas las funciones que lo necesitan
+                fetchOrCreateInviteCode(hId) // Asegurate que esta reciba el String
+                listenToProducts(hId)        // Pasamos el ID
+                listenToHouseholdCategories(hId) // <--- AGREGAMOS ESTA
+
                 hasSeenOnboarding = doc.getBoolean("has_seen_onboarding") ?: false
             } else {
-                // Usuario nuevo (Email o Google): le creamos su casa inicial
+                // Usuario nuevo: creamos su casa inicial
                 val email = auth.currentUser?.email
                 val initialData = mapOf(
                     "email" to email,
                     "householdId" to uid,
-                    "createdAt" to com.google.firebase.Timestamp.now()
+                    "createdAt" to com.google.firebase.Timestamp.now(),
+                    "has_seen_onboarding" to false
                 )
                 userRef.set(initialData).addOnSuccessListener {
-                    householdId = uid
-                    fetchOrCreateInviteCode()
-                    listenToProducts()
+                    currentHouseholdId = uid
+                    fetchOrCreateInviteCode(uid)
+                    listenToProducts(uid)
+                    listenToHouseholdCategories(uid) // <--- TAMBIÉN AQUÍ
                 }
             }
         }
@@ -381,9 +400,7 @@ class ProductViewModel : ViewModel() {
     }
 
     fun resetPassword(email: String, onResult: (String?) -> Unit) {
-        FirebaseAuth.getInstance()
-            .sendPasswordResetEmail(email)
-            .addOnCompleteListener { task ->
+        FirebaseAuth.getInstance().sendPasswordResetEmail(email).addOnCompleteListener { task ->
                 if (task.isSuccessful) {
                     onResult(null) // Todo bien
                 } else {
