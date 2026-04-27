@@ -196,7 +196,7 @@ fun CategoryScreen(
                                         viewModel.addCategory(nombreEditado)
                                     } else {
                                         viewModel.updateCategory(
-                                            categoryParaEditar!!,
+                                            categoryParaEditar!!.id,
                                             nombreEditado
                                         )
                                     }
@@ -204,7 +204,7 @@ fun CategoryScreen(
                                 }
                             },
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A237E))
-                        ) { Text("Guardar") }
+                        ) { Text("Guardar", color = Color.White) }
                     },
                     dismissButton = {
                         TextButton(onClick = { showDialog = false }) {

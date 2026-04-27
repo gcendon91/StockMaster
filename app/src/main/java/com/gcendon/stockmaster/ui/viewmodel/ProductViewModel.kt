@@ -24,8 +24,6 @@ class ProductViewModel : ViewModel() {
     private val db = Firebase.firestore // Referencia a la base de datos
     private val auth = FirebaseAuth.getInstance()
 
-    private var currentHouseholdId: String? = null
-
     var dynamicEmojiMap by mutableStateOf<Map<String, String>>(emptyMap())
         private set
 
@@ -162,34 +160,56 @@ class ProductViewModel : ViewModel() {
     private fun seedDefaultCategories(hId: String) {
         val batch = db.batch()
         DEFAULT_CATEGORIES.forEach { name ->
-            val docRef =
-                db.collection("households").document(hId).collection("categories").document()
-            // Guardamos con el formato correcto
-            batch.set(docRef, Category(id = docRef.id, name = name.capitalizeFirst()))
+            val fixedId = name.lowercase().replace(" ", "_")
+            val docRef = db.collection("households").document(hId)
+                .collection("categories").document(fixedId) // <--- ID FIJO
+
+            batch.set(docRef, Category(id = fixedId, name = name.capitalizeFirst()))
         }
         batch.commit()
     }
 
     fun addCategory(name: String) {
-        val hId = currentHouseholdId ?: return
-        val docRef = db.collection("households").document(hId).collection("categories").document()
+        val hId = householdId // Tu variable unificada
+        Log.d("DEBUG_STOCK", "Intentando agregar categoría. ID del hogar: $hId")
 
-        // Aquí también forzamos el formato si el usuario escribe "panaderia" -> "Panaderia"
-        docRef.set(Category(id = docRef.id, name = name.trim().capitalizeFirst()))
+        if (hId == null) {
+            Log.e("DEBUG_STOCK", "ERROR: householdId es NULL. Por eso no hace nada.")
+            return
+        }
+
+        val docRef = db.collection("households").document(hId)
+            .collection("categories").document()
+
+        val newCat = Category(id = docRef.id, name = name.trim().capitalizeFirst())
+
+        docRef.set(newCat)
+            .addOnSuccessListener {
+                Log.d("DEBUG_STOCK", "¡ÉXITO! Categoría guardada en Firestore.")
+            }
+            .addOnFailureListener { e ->
+                Log.e("DEBUG_STOCK", "ERROR DE FIRESTORE: ${e.message}")
+            }
     }
 
     // Editar una categoría
-    fun updateCategory(category: Category, newName: String) {
-        if (newName.isNotBlank()) {
-            db.collection("categories").document(category.id).update("name", newName)
-        }
+    fun updateCategory(categoryId: String, newName: String) {
+        val hId = householdId ?: return
+
+        db.collection("households").document(hId)
+            .collection("categories").document(categoryId)
+            .update("name", newName.trim().capitalizeFirst())
+            .addOnSuccessListener { Log.d("Firestore", "Categoría editada") }
     }
 
     // Eliminar una categoría
     fun deleteCategory(categoryId: String) {
-        db.collection("categories").document(categoryId).delete()
-        // Nota: Aquí podrías agregar lógica para que los productos
-        // que tenían esta categoría pasen a "Sin Categoría"
+        val hId = householdId ?: return
+
+        db.collection("households").document(hId)
+            .collection("categories").document(categoryId)
+            .delete()
+            .addOnSuccessListener { Log.d("Firestore", "Categoría eliminada") }
     }
 
     fun signInWithGoogle(idToken: String, onResult: (String?) -> Unit) {
@@ -331,7 +351,7 @@ class ProductViewModel : ViewModel() {
             if (doc.exists()) {
                 // 1. Obtenemos el ID y lo guardamos en la variable de la clase
                 val hId = doc.getString("householdId") ?: uid
-                currentHouseholdId = hId
+                this.householdId = hId
 
                 // 2. Pasamos 'hId' a todas las funciones que lo necesitan
                 fetchOrCreateInviteCode(hId) // Asegurate que esta reciba el String
@@ -349,10 +369,11 @@ class ProductViewModel : ViewModel() {
                     "has_seen_onboarding" to false
                 )
                 userRef.set(initialData).addOnSuccessListener {
-                    currentHouseholdId = uid
+                    this.householdId = uid
+
                     fetchOrCreateInviteCode(uid)
                     listenToProducts(uid)
-                    listenToHouseholdCategories(uid) // <--- TAMBIÉN AQUÍ
+                    listenToHouseholdCategories(uid)
                 }
             }
         }
