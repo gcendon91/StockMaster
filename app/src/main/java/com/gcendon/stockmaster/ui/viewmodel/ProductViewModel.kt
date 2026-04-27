@@ -69,20 +69,20 @@ class ProductViewModel : ViewModel() {
     private fun listenToEmojiConfig() {
         // Apuntamos al documento 'visuals' dentro de la colección 'config'
         db.collection("config").document("visuals").addSnapshotListener { snapshot, e ->
-                if (e != null) {
-                    Log.w("FIREBASE", "Error escuchando emojis", e)
-                    return@addSnapshotListener
-                }
+            if (e != null) {
+                Log.w("FIREBASE", "Error escuchando emojis", e)
+                return@addSnapshotListener
+            }
 
-                if (snapshot != null && snapshot.exists()) {
-                    // Traemos el campo 'emojiMap' que es un Mapa en Firebase
-                    val map = snapshot.get("emojiMap") as? Map<String, String>
-                    if (map != null) {
-                        dynamicEmojiMap = map
-                        Log.d("FIREBASE", "Emojis actualizados desde la nube: ${map.size} cargados")
-                    }
+            if (snapshot != null && snapshot.exists()) {
+                // Traemos el campo 'emojiMap' que es un Mapa en Firebase
+                val map = snapshot.get("emojiMap") as? Map<String, String>
+                if (map != null) {
+                    dynamicEmojiMap = map
+                    Log.d("FIREBASE", "Emojis actualizados desde la nube: ${map.size} cargados")
                 }
             }
+        }
     }
 
     private fun listenToProducts(hId: String) {
@@ -103,7 +103,11 @@ class ProductViewModel : ViewModel() {
     fun addProduct(name: String, category: String, stock: Double, unit: String, minStock: Double) {
         val hid = householdId ?: return
 
+        // Ruta nueva: households/ID/products
+        val docRef = db.collection("households").document(hid).collection("products").document()
+
         val newProduct = Product(
+            id = docRef.id,
             name = name,
             category = category,
             currentStock = stock,
@@ -112,14 +116,17 @@ class ProductViewModel : ViewModel() {
             householdId = hid
         )
 
-        db.collection("products").add(newProduct)
-            .addOnSuccessListener { Log.d("FIREBASE", "Producto creado en el hogar $hid") }
+        docRef.set(newProduct).addOnSuccessListener {
+            Log.d("FIREBASE", "Producto creado exitosamente en households/$hid/products")
+        }.addOnFailureListener { e ->
+            Log.e("FIREBASE", "Error al crear producto: ${e.message}")
+        }
     }
 
     fun updateProduct(
         id: String, name: String, category: String, stock: Double, unit: String, minStock: Double
     ) {
-        val hid = householdId ?: return
+        val hId = householdId ?: return // Usamos tu variable de estado
 
         val updatedProduct = mapOf(
             "name" to name,
@@ -127,23 +134,30 @@ class ProductViewModel : ViewModel() {
             "currentStock" to stock,
             "unit" to unit,
             "minStock" to minStock,
-            "householdId" to hid // Lo mantenemos vinculado al mismo hogar
+            "householdId" to hId
         )
 
-        db.collection("products").document(id).update(updatedProduct)
-            .addOnSuccessListener { Log.d("FIREBASE", "Producto $id actualizado") }
+        db.collection("households").document(hId).collection("products").document(id)
+            .update(updatedProduct)
+            .addOnSuccessListener { Log.d("FIREBASE", "Producto $id actualizado en el hogar $hId") }
+            .addOnFailureListener { e -> Log.e("FIREBASE", "Error al actualizar: ${e.message}") }
     }
 
     fun deleteMultipleProducts(productIds: Set<String>) {
+        val hId = householdId ?: return
+
         productIds.forEach { id ->
-            db.collection("products").document(id).delete()
-                .addOnFailureListener { e -> println("Error al borrar $id: $e") }
+            db.collection("households").document(hId).collection("products").document(id).delete()
+                .addOnFailureListener { e ->
+                    Log.e(
+                        "FIREBASE", "Error al borrar $id: ${e.message}"
+                    )
+                }
         }
     }
 
     private fun listenToHouseholdCategories(hId: String) {
-        db.collection("households").document(hId)
-            .collection("categories")
+        db.collection("households").document(hId).collection("categories")
             .addSnapshotListener { snapshot, _ ->
                 val cats = snapshot?.documents?.mapNotNull { doc ->
                     doc.toObject(Category::class.java)?.copy(id = doc.id)
@@ -161,8 +175,8 @@ class ProductViewModel : ViewModel() {
         val batch = db.batch()
         DEFAULT_CATEGORIES.forEach { name ->
             val fixedId = name.lowercase().replace(" ", "_")
-            val docRef = db.collection("households").document(hId)
-                .collection("categories").document(fixedId) // <--- ID FIJO
+            val docRef = db.collection("households").document(hId).collection("categories")
+                .document(fixedId) // <--- ID FIJO
 
             batch.set(docRef, Category(id = fixedId, name = name.capitalizeFirst()))
         }
@@ -178,26 +192,22 @@ class ProductViewModel : ViewModel() {
             return
         }
 
-        val docRef = db.collection("households").document(hId)
-            .collection("categories").document()
+        val docRef = db.collection("households").document(hId).collection("categories").document()
 
         val newCat = Category(id = docRef.id, name = name.trim().capitalizeFirst())
 
-        docRef.set(newCat)
-            .addOnSuccessListener {
-                Log.d("DEBUG_STOCK", "¡ÉXITO! Categoría guardada en Firestore.")
-            }
-            .addOnFailureListener { e ->
-                Log.e("DEBUG_STOCK", "ERROR DE FIRESTORE: ${e.message}")
-            }
+        docRef.set(newCat).addOnSuccessListener {
+            Log.d("DEBUG_STOCK", "¡ÉXITO! Categoría guardada en Firestore.")
+        }.addOnFailureListener { e ->
+            Log.e("DEBUG_STOCK", "ERROR DE FIRESTORE: ${e.message}")
+        }
     }
 
     // Editar una categoría
     fun updateCategory(categoryId: String, newName: String) {
         val hId = householdId ?: return
 
-        db.collection("households").document(hId)
-            .collection("categories").document(categoryId)
+        db.collection("households").document(hId).collection("categories").document(categoryId)
             .update("name", newName.trim().capitalizeFirst())
             .addOnSuccessListener { Log.d("Firestore", "Categoría editada") }
     }
@@ -206,10 +216,8 @@ class ProductViewModel : ViewModel() {
     fun deleteCategory(categoryId: String) {
         val hId = householdId ?: return
 
-        db.collection("households").document(hId)
-            .collection("categories").document(categoryId)
-            .delete()
-            .addOnSuccessListener { Log.d("Firestore", "Categoría eliminada") }
+        db.collection("households").document(hId).collection("categories").document(categoryId)
+            .delete().addOnSuccessListener { Log.d("Firestore", "Categoría eliminada") }
     }
 
     fun signInWithGoogle(idToken: String, onResult: (String?) -> Unit) {
@@ -280,16 +288,16 @@ class ProductViewModel : ViewModel() {
 
             db.collection("users").document(uid).set(userData).addOnSuccessListener {
                 user?.sendEmailVerification()?.addOnCompleteListener { task ->
-                            // ¡ESTA ES LA CLAVE!
-                            // Lo deslogueamos apenas se registra para que no entre por la ventana.
-                            auth.signOut()
+                    // ¡ESTA ES LA CLAVE!
+                    // Lo deslogueamos apenas se registra para que no entre por la ventana.
+                    auth.signOut()
 
-                            if (task.isSuccessful) {
-                                onResult(null)
-                            } else {
-                                onResult("Cuenta creada, pero falló el envío del mail.")
-                            }
-                        }
+                    if (task.isSuccessful) {
+                        onResult(null)
+                    } else {
+                        onResult("Cuenta creada, pero falló el envío del mail.")
+                    }
+                }
             }.addOnFailureListener { onResult("Error al crear perfil en base de datos") }
 
         }.addOnFailureListener { exception ->
@@ -335,8 +343,7 @@ class ProductViewModel : ViewModel() {
                     val newShortCode =
                         (1..6).map { (('A'..'Z') + ('0'..'9')).random() }.joinToString("")
                     val data = hashMapOf(
-                        "householdId" to hId,
-                        "createdAt" to com.google.firebase.Timestamp.now()
+                        "householdId" to hId, "createdAt" to com.google.firebase.Timestamp.now()
                     )
                     db.collection("invitations").document(newShortCode).set(data)
                         .addOnSuccessListener { inviteCode = newShortCode }
@@ -385,18 +392,20 @@ class ProductViewModel : ViewModel() {
     }
 
     fun purchaseProduct(product: Product, cantidadComprada: Double) {
-        auth.currentUser?.uid ?: return
+        val hId = householdId ?: return
 
         // El nuevo stock es lo que ya tenías + lo que acabás de comprar
         val nuevoStock = product.currentStock + cantidadComprada
 
-        db.collection("products").document(product.id).update("currentStock", nuevoStock)
-            .addOnSuccessListener {
-                // Se actualiza solo en la lista
-            }
+        db.collection("households").document(hId)
+            .collection("products").document(product.id)
+            .update("currentStock", nuevoStock)
+            .addOnSuccessListener { Log.d("FIREBASE", "Compra registrada para ${product.name}") }
     }
 
     fun quickUpdateStock(product: Product, isAdding: Boolean) {
+        val hId = householdId ?: return
+
         // Definimos el salto según la unidad
         val step = when (product.unit.lowercase().trim()) {
             "g", "gr", "gramos" -> 10.0
@@ -408,33 +417,42 @@ class ProductViewModel : ViewModel() {
         val delta = if (isAdding) step else -step
         val finalStock = (product.currentStock + delta).coerceAtLeast(0.0)
 
-        db.collection("products").document(product.id).update("currentStock", finalStock)
+        db.collection("households").document(hId)
+            .collection("products").document(product.id)
+            .update("currentStock", finalStock)
     }
 
     fun resetStock(product: Product) {
-        db.collection("products").document(product.id).update("currentStock", 0.0)
+        val hId = householdId ?: return
+
+        db.collection("households").document(hId)
+            .collection("products").document(product.id)
+            .update("currentStock", 0.0)
     }
 
     fun updateStockDirectly(product: Product, newStock: Double) {
-        db.collection("products").document(product.id)
+        val hId = householdId ?: return
+
+        db.collection("households").document(hId)
+            .collection("products").document(product.id)
             .update("currentStock", newStock.coerceAtLeast(0.0))
     }
 
     fun resetPassword(email: String, onResult: (String?) -> Unit) {
         FirebaseAuth.getInstance().sendPasswordResetEmail(email).addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    onResult(null) // Todo bien
-                } else {
-                    // Manejo de errores amigable
-                    val errorMsg =
-                        when ((task.exception as? com.google.firebase.auth.FirebaseAuthException)?.errorCode) {
-                            "ERROR_USER_NOT_FOUND" -> "No existe una cuenta con este email."
-                            "ERROR_INVALID_EMAIL" -> "El formato del email no es válido."
-                            else -> task.exception?.localizedMessage ?: "Error al enviar el correo."
-                        }
-                    onResult(errorMsg)
-                }
+            if (task.isSuccessful) {
+                onResult(null) // Todo bien
+            } else {
+                // Manejo de errores amigable
+                val errorMsg =
+                    when ((task.exception as? com.google.firebase.auth.FirebaseAuthException)?.errorCode) {
+                        "ERROR_USER_NOT_FOUND" -> "No existe una cuenta con este email."
+                        "ERROR_INVALID_EMAIL" -> "El formato del email no es válido."
+                        else -> task.exception?.localizedMessage ?: "Error al enviar el correo."
+                    }
+                onResult(errorMsg)
             }
+        }
     }
 
 }

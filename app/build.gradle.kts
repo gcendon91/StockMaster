@@ -18,10 +18,10 @@ android {
         targetSdk = 36
         //VERSION CODE: Incrementalo en 1 (siempre es un número entero)
         // Es el que usa Google Play para saber si esta app es más nueva que la anterior.
-        versionCode = 6
+        versionCode = 7
         //VERSION NAME: Poné tu nuevo "Badge" de versión
         // Es el que ven los usuarios.
-        versionName = "1.5.0"
+        versionName = "1.5.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
