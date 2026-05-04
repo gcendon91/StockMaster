@@ -31,11 +31,13 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.gcendon.stockmaster.data.Category
 import com.gcendon.stockmaster.data.Product
 import kotlinx.coroutines.delay
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -79,13 +81,21 @@ fun AddProductDialog(
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextField(
                     value = name,
-                    onValueChange = { name = it },
+                    onValueChange = { input ->
+                        // Si el texto no está vacío, ponemos la primera en mayúscula
+                        name = input.replaceFirstChar {
+                            if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString()
+                        }
+                    },
                     label = { Text("Nombre") },
                     modifier = Modifier
                         .fillMaxWidth()
                         .focusRequester(focusRequester), // ASIGNACIÓN DEL FOCO
                     singleLine = true,
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
+                    keyboardOptions = KeyboardOptions(
+                        capitalization = KeyboardCapitalization.Words,
+                        imeAction = ImeAction.Next
+                    )
                 )
 
                 Row(

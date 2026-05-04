@@ -6,9 +6,15 @@
 
 ## English
 
-**Stock Master** is an Android application built with **Jetpack Compose** designed for
-collaborative household inventory management. It allows families or roommates to sync their pantry
-in real-time, manage shopping lists, and track stock levels with a sleek, modern UI.
+**Stock Master** is a professional Android application built with **Jetpack Compose**, designed for
+collaborative household inventory management. It allows real-time synchronization, smart shopping
+list generation, and advanced stock tracking with a high-end, modern UI.
+
+### 🚀 Google Play Status
+
+> **Current Phase:** `Closed Testing (Beta)`  
+> This project follows industry standards for distribution, including signed bundles (AAB),
+> versioning control, and Google Play Console deployment.
 
 <div align="center">
   <img src="https://raw.githubusercontent.com/gcendon91/StockMaster/master/screenshots/login_screen.png" width="30%" />
@@ -18,67 +24,69 @@ in real-time, manage shopping lists, and track stock levels with a sleek, modern
 
 ### ✨ Key Features (v1.4.0)
 
+* 📐 **UX Refinement & Smart Logic:** Features **Smart Category Sorting** (ensuring "Others" stays at
+  the bottom while keeping the rest alphabetical) and support for 2-line product names for better
+  readability.
 * ☁️ **Cloud-Driven Visuals:** Integrated a **Dynamic Emoji System** managed via Firebase Firestore.
-  Icons are updated remotely in real-time without needing an app update.
-* 📊 **Smart Inventory Steppers:** New `ProductCard` UI with intelligent `+` and `-` buttons. The app
-  automatically calculates increments based on units (e.g., **100g** for weights, **1 unit** for
-  items).
-* ⚡ **Zero-Friction Reset:** Long-press the minus button to instantly set stock to zero—perfect for
-  items that just ran out.
-* ✏️ **Quick-Edit Dialog:** Tap the stock number to open a dedicated adjustment overlay. Features *
-  *Auto-Focus** and **Smart Text Selection** for lightning-fast manual entries.
-* 🏠 **Collaborative Households:** Share your pantry using **6-character invite codes**. Optimized
-  join flow with real-time feedback and clear error states.
-* 👤 **Profile Personalization:** Integrated **Firebase Storage** for custom profile pictures with a
-  modern management menu.
-* 📐 **UX Refinement:** Support for **2-line product names** and enhanced visual hierarchy. Controls
-  automatically disable during multi-selection mode to prevent accidental edits.
+  Icons update remotely without requiring an app update.
+* 📊 **Smart Inventory Steppers:** `ProductCard` UI with intelligent increments (e.g., **100g** for
+  weights, **1 unit** for items).
+* ⚡ **Zero-Friction Reset:** Long-press the minus button to instantly set stock to zero.
+* ✏️ **Quick-Edit Dialog:** Tap stock numbers for a precision adjustment overlay with **Auto-Focus**
+  and **Smart Text Selection**.
+* 🏠 **Collaborative Households:** Share pantries via **6-character invite codes** with real-time
+  feedback.
+* 👤 **Profile Personalization:** **Firebase Storage** integration for custom profile pictures.
 * 🔐 **Secure Auth:** Integrated with **Google Sign-In (Credential Manager)** and Email/Password.
 
 ### 🛠️ Tech Stack
 
 * **Language:** Kotlin + Coroutines & Flow.
 * **UI:** Jetpack Compose (Material Design 3).
-* **Image Loading:** Coil for asynchronous images.
-* **Backend:** Firebase (Firestore, Authentication & Storage).
 * **Architecture:** MVVM (Model-View-ViewModel).
+* **Backend:** Firebase (Firestore, Auth & Storage).
+* **Image Loading:** Coil.
 
 ---
 
 ## Español
 
-**Stock Master** es una aplicación de Android construida con **Jetpack Compose** diseñada
-para la gestión colaborativa de inventarios hogareños. Permite a familias o compañeros de casa
-sincronizar su despensa en tiempo real, gestionar listas de compras y controlar niveles de stock con
-una interfaz moderna y elegante.
+**Stock Master** es una aplicación profesional de Android construida con **Jetpack Compose** para la
+gestión colaborativa de inventarios. Sincronización en tiempo real, listas de compras inteligentes y
+una interfaz moderna de alto nivel.
+
+### 🚀 Estado en Google Play
+
+> **Fase Actual:** `Pruebas Cerradas (Beta)`  
+> El proyecto cumple con los estándares de la industria para distribución: Bundles firmados (AAB),
+> control de versiones y gestión profesional en Google Play Console.
 
 ### ✨ Características (v1.4.0)
 
-* ☁️ **Visuales desde la Nube:** Sistema de **Iconos Dinámicos** gestionado vía Firebase Firestore.
-  Los emojis se actualizan de forma remota y en tiempo real sin actualizar la app.
-* 📊 **Controles de Stock Inteligentes:** Nueva interfaz en `ProductCard` con botones `+` y `-`. La
-  app calcula automáticamente el salto según la unidad (ej: **100g** para pesos, **1 unidad** para
-  productos sueltos).
-* ⚡ **Reseteo Instantáneo:** Mantén presionado el botón de restar para poner el stock en cero
-  inmediatamente cuando un producto se termina.
-* ✏️ **Edición Rápida de Precisión:** Toca el número de stock para abrir un diálogo de ajuste.
-  Incluye **Auto-Foco** y **Selección Automática** para que solo tengas que tocar y escribir.
-* 🏠 **Hogares Colaborativos:** Compartí tu despensa usando **códigos de invitación de 6 caracteres
-  **. Flujo de unión optimizado con estados de carga claros.
-* 👤 **Personalización de Perfil:** Integración con **Firebase Storage** para subir fotos de perfil y
-  gestión de identidad moderna.
-* 📐 **Refinamiento de UX:** Soporte para **nombres de 2 líneas** y jerarquía visual mejorada. Los
-  controles se bloquean durante la selección múltiple para evitar errores.
-* 🔐 **Acceso Seguro:** Integración con **Google Sign-In (Credential Manager)** y Email para un ingreso rápido.
+* 📐 **Refinamiento de UX y Lógica:** Implementación de **Ordenamiento Inteligente de Categorías** (
+  mantiene "Otros" al final y el resto alfabético) y soporte para nombres largos de productos.
+* ☁️ **Visuales desde la Nube:** Sistema de **Iconos Dinámicos** vía Firestore. Emojis actualizables
+  de forma remota sin subir nuevas versiones.
+* 📊 **Controles Inteligentes:** Interfaz con saltos automáticos según la unidad (ej: **100g** o **1
+  unidad**).
+* ⚡ **Reseteo Instantáneo:** Mantén presionado "-" para vaciar el stock de un producto
+  inmediatamente.
+* ✏️ **Edición Rápida:** Diálogo de ajuste con **Auto-Foco** y **Selección Automática** para
+  entradas rápidas.
+* 🏠 **Hogares Colaborativos:** Sincronización mediante **códigos de invitación de 6 caracteres**.
+* 👤 **Personalización de Perfil:** Uso de **Firebase Storage** para fotos de perfil personalizadas.
+* 🔐 **Acceso Seguro:** Integración con **Google Sign-In** y Email.
 
 ---
 
 ### 📦 Installation / Instalación
 
-You can download the latest APK from the releases section / Podés descargar el último APK desde la
-sección de releases:
-👉 [**Download Stock Master v1.4.0
-**](https://github.com/gcendon91/StockMaster/releases/download/v1.4.0/StockMaster_v1.4.0.apk)
+> 🧪 **Beta Testing:** This app is currently in a closed beta on Google Play. If you'd like to join
+> the testing team, please contact me via LinkedIn or GitHub!
+>
+> Alternatively, you can download the latest manual build:  
+> 👉 [**Download Stock Master v1.5.1 (APK)
+**](https://github.com/gcendon91/StockMaster/releases/download/v1.5.1/StockMaster_v1.5.1.apk)
 
 ---
 *Developed by Gonzalo Cendón - 2026*

@@ -52,9 +52,9 @@ class ProductViewModel : ViewModel() {
         "Carnicería",
         "Lácteos",
         "Limpieza",
-        "Otros",
         "Pescadería",
-        "Verdulería"
+        "Verdulería",
+        "Otros",
     )
 
     fun String.capitalizeFirst(): String = this.lowercase().replaceFirstChar { it.uppercase() }
@@ -166,7 +166,10 @@ class ProductViewModel : ViewModel() {
                 if (cats.isEmpty()) {
                     seedDefaultCategories(hId)
                 } else {
-                    _categories.value = cats.sortedBy { it.name }
+                    _categories.value = cats.sortedWith(
+                        compareBy<Category> { it.name.equals("Otros", ignoreCase = true) }
+                            .thenBy { it.name }
+                    )
                 }
             }
     }

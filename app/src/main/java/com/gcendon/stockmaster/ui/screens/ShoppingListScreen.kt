@@ -60,6 +60,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -87,7 +88,14 @@ fun ShoppingListScreen(
     var cantidadAComprar by remember { mutableStateOf("") }
 
     val categoriasDisponibles = remember(itemsParaComprar) {
-        listOf("Todas") + itemsParaComprar.map { it.category }.distinct().sorted()
+        val nombresUnicos = itemsParaComprar.map { it.category }.distinct()
+
+        val nombresOrdenados = nombresUnicos.sortedWith(
+            compareBy<String> { it.equals("Otros", ignoreCase = true) }
+                .thenBy { it }
+        )
+
+        listOf("Todas") + nombresOrdenados
     }
 
     val itemsFiltrados = remember(searchQuery, selectedCategory, itemsParaComprar) {
@@ -394,6 +402,10 @@ fun ShoppingListScreen(
                             value = cantidadAComprar,
                             onValueChange = { cantidadAComprar = it },
                             label = { Text("Cantidad en ${productoSeleccionado!!.unit}") },
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Decimal,
+                                imeAction = ImeAction.Done
+                            ),
                             modifier = Modifier.fillMaxWidth(),
                             singleLine = true
                         )

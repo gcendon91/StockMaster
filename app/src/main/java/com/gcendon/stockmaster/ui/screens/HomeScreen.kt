@@ -97,7 +97,11 @@ fun HomeScreen(
     }
 
     val categoriasParaFiltrar = remember(categories) {
-        listOf("Todas") + categories.map { it.name }.sorted()
+        val nombresOrdenados = categories.map { it.name }.sortedWith(
+            compareBy<String> { it.equals("Otros", ignoreCase = true) }
+                .thenBy { it }
+        )
+        listOf("Todas") + nombresOrdenados
     }
 
     // --- CAPA DE FONDO (Igual al Login) ---

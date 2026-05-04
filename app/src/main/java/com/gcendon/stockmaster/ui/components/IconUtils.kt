@@ -26,6 +26,7 @@ object IconUtils {
             n.contains("salsa") || n.contains("ketchup") || n.contains("mayonesa") || n.contains("mostaza") || n.contains(
                 "barbacoa"
             ) -> "🥫"
+            n.contains("salchicha") -> "🌭"
             n.contains("estropajo") || n.contains("esponja") || n.contains("trapo") -> "🧽"
             n.contains("café en granos") || n.contains("cafe en granos") -> "🫘"
             n.contains("dientes") || n.contains("cepillos de dientes") -> "🪥"
