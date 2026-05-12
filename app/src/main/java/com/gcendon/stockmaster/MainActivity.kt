@@ -2,6 +2,7 @@ package com.gcendon.stockmaster
 
 import android.os.Build
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -9,6 +10,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -27,12 +29,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Face
+import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.AlertDialog
@@ -43,9 +48,11 @@ import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FabPosition
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MaterialTheme.typography
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
@@ -68,9 +75,15 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -89,6 +102,7 @@ import com.gcendon.stockmaster.ui.theme.StockMasterTheme
 import com.gcendon.stockmaster.ui.viewmodel.ProductViewModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.userProfileChangeRequest
+import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.storage.FirebaseStorage
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
@@ -118,8 +132,52 @@ class MainActivity : ComponentActivity() {
 
             val navBackStackEntry by navController.currentBackStackEntryAsState()
             val currentRoute = navBackStackEntry?.destination?.route
-            val context = androidx.compose.ui.platform.LocalContext.current
-            val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
+            val context = LocalContext.current
+            val clipboardManager = LocalClipboardManager.current
+
+            var isLoadingCheck by remember { mutableStateOf(true) }
+
+            val db = FirebaseFirestore.getInstance()
+            var isUpdateRequired by remember { mutableStateOf(false) }
+
+            // Obtenemos la versión real instalada preguntándole al Sistema Operativo
+            val currentVersion = remember {
+                try {
+                    val packageInfo =
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            context.packageManager.getPackageInfo(
+                                context.packageName,
+                                android.content.pm.PackageManager.PackageInfoFlags.of(0)
+                            )
+                        } else {
+                            @Suppress("DEPRECATION")
+                            context.packageManager.getPackageInfo(context.packageName, 0)
+                        }
+
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                        packageInfo.longVersionCode.toInt()
+                    } else {
+                        @Suppress("DEPRECATION")
+                        packageInfo.versionCode
+                    }
+                } catch (e: Exception) {
+                    1 // Valor por defecto
+                }
+            }
+
+            //Consultamos a Firestore si esta versión es válida
+            LaunchedEffect(Unit) {
+                db.collection("config").document("app_status")
+                    .get()
+                    .addOnSuccessListener { document ->
+                        val minVersion = document.getLong("min_version") ?: 0L
+                        isUpdateRequired = currentVersion < minVersion.toInt()
+                        isLoadingCheck = false // YA TENEMOS LA RESPUESTA
+                    }
+                    .addOnFailureListener {
+                        isLoadingCheck = false // SI FALLA, TAMBIÉN DEJAMOS DE CARGAR
+                    }
+            }
 
             val galleryLauncher = rememberLauncherForActivityResult(
                 contract = ActivityResultContracts.GetContent()
@@ -142,12 +200,12 @@ class MainActivity : ComponentActivity() {
                             // Actualizamos el estado para que la UI se entere del cambio
                             userState = auth.currentUser
 
-                            android.widget.Toast.makeText(
-                                context, "¡Foto actualizada!", android.widget.Toast.LENGTH_SHORT
+                            Toast.makeText(
+                                context, "¡Foto actualizada!", Toast.LENGTH_SHORT
                             ).show()
                         } catch (e: Exception) {
-                            android.widget.Toast.makeText(
-                                context, "Error al subir", android.widget.Toast.LENGTH_SHORT
+                            Toast.makeText(
+                                context, "Error al subir", Toast.LENGTH_SHORT
                             ).show()
                         } finally {
                             isUploadingPhoto = false
@@ -171,7 +229,12 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                if (!isFullyAuthenticated) {
+
+                if (isLoadingCheck) {
+                    SplashScreenSimple()
+                } else if (isUpdateRequired) {
+                    UpdateRequiredScreen(context = context)
+                } else if (!isFullyAuthenticated) {
                     LoginScreen(viewModel = viewModel)
                 } else if (needsOnboarding) {
                     // Si está logueado pero no vio el tutorial, lo mandamos acá
@@ -192,7 +255,7 @@ class MainActivity : ComponentActivity() {
                                         .fillMaxWidth()
                                         .height(200.dp)
                                         .background(
-                                            brush = androidx.compose.ui.graphics.Brush.verticalGradient(
+                                            brush = Brush.verticalGradient(
                                                 colors = listOf(
                                                     Color(0xFF1A237E), // Azul oscuro (Indigo 900)
                                                     Color(0xFF3949AB)  // Azul intermedio (Indigo 600)
@@ -303,14 +366,14 @@ class MainActivity : ComponentActivity() {
                                             onClick = {
                                                 viewModel.inviteCode?.let { code ->
                                                     clipboardManager.setText(
-                                                        androidx.compose.ui.text.AnnotatedString(
+                                                        AnnotatedString(
                                                             code
                                                         )
                                                     )
-                                                    android.widget.Toast.makeText(
+                                                    Toast.makeText(
                                                         context,
                                                         "¡Código copiado!",
-                                                        android.widget.Toast.LENGTH_SHORT
+                                                        Toast.LENGTH_SHORT
                                                     ).show()
                                                 }
                                             },
@@ -377,7 +440,7 @@ class MainActivity : ComponentActivity() {
                                 Spacer(modifier = Modifier.weight(1f))
 
                                 // 4. PIE DE PÁGINA: Acciones críticas
-                                androidx.compose.material3.HorizontalDivider(
+                                HorizontalDivider(
                                     modifier = Modifier.padding(
                                         horizontal = 24.dp
                                     ), color = Color.LightGray.copy(alpha = 0.3f)
@@ -483,8 +546,8 @@ class MainActivity : ComponentActivity() {
                                             alTerminar()
 
                                             // 2. Mostramos el mensaje (Toast)
-                                            android.widget.Toast.makeText(
-                                                context, mensaje, android.widget.Toast.LENGTH_SHORT
+                                            Toast.makeText(
+                                                context, mensaje, Toast.LENGTH_SHORT
                                             ).show()
 
                                             // 3. Si fue exitoso, cerramos el diálogo
@@ -545,7 +608,7 @@ class MainActivity : ComponentActivity() {
                                                     ) { newUser -> userState = newUser }
                                                 })
 
-                                            androidx.compose.material3.HorizontalDivider(
+                                            HorizontalDivider(
                                                 modifier = Modifier.padding(
                                                     vertical = 8.dp
                                                 ), color = Color.LightGray.copy(alpha = 0.3f)
@@ -608,6 +671,118 @@ class MainActivity : ComponentActivity() {
             } catch (e: Exception) {
                 // Error silencioso o un Toast
             }
+        }
+    }
+}
+
+
+@Composable
+fun UpdateRequiredScreen(context: android.content.Context) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        // 1. FONDO COHERENTE (Igual a Login/Splash)
+        Image(
+            painter = painterResource(id = R.drawable.bg_login),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
+        )
+
+        // 2. OVERLAY OSCURO MÁS DENSO (Para dar sensación de bloqueo/importancia)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Black.copy(alpha = 0.7f),
+                            Color.Black.copy(alpha = 0.9f)
+                        )
+                    )
+                )
+        )
+
+        // 3. CONTENIDO
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            // Icono con estilo "Glass"
+            Surface(
+                modifier = Modifier.size(100.dp),
+                shape = CircleShape,
+                color = Color.White.copy(alpha = 0.1f),
+                border = BorderStroke(1.dp, Color(0xFF43A047).copy(alpha = 0.5f))
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Security,
+                    contentDescription = null,
+                    tint = Color(0xFF43A047), // Tu verde de stock
+                    modifier = Modifier.padding(24.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            Text(
+                text = "ACTUALIZACIÓN NECESARIA",
+                color = Color.White,
+                fontWeight = FontWeight.Black,
+                style = typography.headlineSmall,
+                letterSpacing = 2.sp,
+                textAlign = TextAlign.Center
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = "Para garantizar la seguridad de tus datos y la sincronización de tu hogar, es necesario instalar la última versión de StockMaster.",
+                color = Color.White.copy(alpha = 0.7f),
+                textAlign = TextAlign.Center,
+                lineHeight = 24.sp
+            )
+
+            Spacer(modifier = Modifier.height(48.dp))
+
+            // BOTÓN DE ACCIÓN (Tu verde característico)
+            Button(
+                onClick = {
+                    val intent = android.content.Intent(
+                        android.content.Intent.ACTION_VIEW,
+                        android.net.Uri.parse("market://details?id=com.gcendon.stockmaster")
+                    )
+                    context.startActivity(intent)
+                },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF43A047),
+                    contentColor = Color.White
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                shape = RoundedCornerShape(16.dp),
+                elevation = ButtonDefaults.buttonElevation(defaultElevation = 8.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.CloudDownload, contentDescription = null)
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Text(
+                        "ACTUALIZAR AHORA",
+                        fontWeight = FontWeight.Black,
+                        letterSpacing = 1.sp
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = "Versión mínima requerida detectada",
+                style = typography.labelSmall,
+                color = Color.White.copy(alpha = 0.3f)
+            )
         }
     }
 }
@@ -689,5 +864,63 @@ fun ProfileMenuOption(
             style = typography.bodyLarge,
             color = color ?: Color.Unspecified // Unspecified deja el color de texto por defecto
         )
+    }
+}
+
+@Composable
+fun SplashScreenSimple() {
+    Box(modifier = Modifier.fillMaxSize()) {
+        // 1. Mantenemos el fondo para la consistencia visual
+        Image(
+            painter = painterResource(id = R.drawable.bg_login),
+            contentDescription = null,
+            modifier = Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop
+        )
+
+        // 2. Capa oscura para que el blanco resalte
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    brush = Brush.verticalGradient(
+                        colors = listOf(
+                            Color.Black.copy(alpha = 0.4f),
+                            Color.Black.copy(alpha = 0.8f)
+                        )
+                    )
+                )
+        )
+
+        // 3. Contenido Central (Solo Ícono y Carga)
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            // El círculo con el ícono (Branding visual sin texto)
+            Surface(
+                modifier = Modifier.size(100.dp),
+                shape = CircleShape,
+                color = Color.White.copy(alpha = 0.15f),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.5f))
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Inventory,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.padding(26.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(48.dp))
+
+            // El indicador de carga
+            CircularProgressIndicator(
+                modifier = Modifier.size(32.dp),
+                color = Color.White,
+                strokeWidth = 3.dp
+            )
+        }
     }
 }

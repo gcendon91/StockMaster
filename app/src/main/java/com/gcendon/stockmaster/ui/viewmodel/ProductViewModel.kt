@@ -27,8 +27,8 @@ class ProductViewModel : ViewModel() {
     var dynamicEmojiMap by mutableStateOf<Map<String, String>>(emptyMap())
         private set
 
-    private val _products = MutableStateFlow<List<Product>>(emptyList())
-    val products: StateFlow<List<Product>> = _products.asStateFlow()
+    private val _products = MutableStateFlow<List<Product>?>(null)
+    val products: StateFlow<List<Product>?> = _products.asStateFlow()
 
     var householdId by mutableStateOf<String?>(null)
         private set
@@ -37,7 +37,7 @@ class ProductViewModel : ViewModel() {
     val categories: StateFlow<List<Category>> = _categories.asStateFlow()
 
     val shoppingList: StateFlow<List<Product>> = products.map { lista ->
-        lista.filter { it.currentStock < it.minStock }
+        lista?.filter { it.currentStock < it.minStock } ?: emptyList()
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     var inviteCode by mutableStateOf<String?>(null)
@@ -88,15 +88,17 @@ class ProductViewModel : ViewModel() {
     private fun listenToProducts(hId: String) {
         db.collection("households").document(hId).collection("products")
             .addSnapshotListener { snapshot, e ->
-                if (e != null) return@addSnapshotListener
+                if (e != null) {
+                    _products.value = emptyList()
+                    return@addSnapshotListener
+                }
 
                 val list = snapshot?.documents?.mapNotNull { doc ->
                     doc.toObject(Product::class.java)?.copy(id = doc.id)
                 } ?: emptyList()
 
-                val listaOrdenada =
+                _products.value =
                     list.sortedWith(compareBy<Product> { it.category }.thenBy { it.name })
-                _products.value = listaOrdenada
             }
     }
 
@@ -166,10 +168,12 @@ class ProductViewModel : ViewModel() {
                 if (cats.isEmpty()) {
                     seedDefaultCategories(hId)
                 } else {
-                    _categories.value = cats.sortedWith(
-                        compareBy<Category> { it.name.equals("Otros", ignoreCase = true) }
-                            .thenBy { it.name }
-                    )
+                    _categories.value = cats.sortedWith(compareBy<Category> {
+                        it.name.equals(
+                            "Otros",
+                            ignoreCase = true
+                        )
+                    }.thenBy { it.name })
                 }
             }
     }
@@ -400,8 +404,7 @@ class ProductViewModel : ViewModel() {
         // El nuevo stock es lo que ya tenías + lo que acabás de comprar
         val nuevoStock = product.currentStock + cantidadComprada
 
-        db.collection("households").document(hId)
-            .collection("products").document(product.id)
+        db.collection("households").document(hId).collection("products").document(product.id)
             .update("currentStock", nuevoStock)
             .addOnSuccessListener { Log.d("FIREBASE", "Compra registrada para ${product.name}") }
     }
@@ -420,24 +423,21 @@ class ProductViewModel : ViewModel() {
         val delta = if (isAdding) step else -step
         val finalStock = (product.currentStock + delta).coerceAtLeast(0.0)
 
-        db.collection("households").document(hId)
-            .collection("products").document(product.id)
+        db.collection("households").document(hId).collection("products").document(product.id)
             .update("currentStock", finalStock)
     }
 
     fun resetStock(product: Product) {
         val hId = householdId ?: return
 
-        db.collection("households").document(hId)
-            .collection("products").document(product.id)
+        db.collection("households").document(hId).collection("products").document(product.id)
             .update("currentStock", 0.0)
     }
 
     fun updateStockDirectly(product: Product, newStock: Double) {
         val hId = householdId ?: return
 
-        db.collection("households").document(hId)
-            .collection("products").document(product.id)
+        db.collection("households").document(hId).collection("products").document(product.id)
             .update("currentStock", newStock.coerceAtLeast(0.0))
     }
 

@@ -31,6 +31,7 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.CenterAlignedTopAppBar
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -88,13 +89,13 @@ fun HomeScreen(
     var showSheet by remember { mutableStateOf(false) }
     val sheetState = rememberModalBottomSheetState()
 
-    val filteredProducts = productList.filter { prod ->
+    val filteredProducts = productList?.filter { prod ->
         val matchSearch = prod.name.contains(searchQuery, ignoreCase = true) ||
                 prod.category.contains(searchQuery, ignoreCase = true)
         val matchCategory =
             if (selectedCategory == "Todas") true else prod.category == selectedCategory
         matchSearch && matchCategory
-    }
+    } ?: emptyList()
 
     val categoriasParaFiltrar = remember(categories) {
         val nombresOrdenados = categories.map { it.name }.sortedWith(
@@ -184,106 +185,120 @@ fun HomeScreen(
                     .fillMaxSize()
                     .padding(top = paddingInterno.calculateTopPadding())
             ) {
-                if (productList.isEmpty()) {
-                    // --- CASO 1: LA ALACENA ESTÁ REALMENTE VACÍA (TUTORIAL) ---
-                    // Llamamos al componente que creamos en ui/components/EmptyStates.kt
-                    EmptyInventoryState()
-                } else {
-                    // --- CASO 2: HAY PRODUCTOS (TU UI ACTUAL) ---
-
-                    // 1. Buscador (Solo se muestra si hay algo que buscar)
-
-                    OutlinedTextField(
-                        value = searchQuery,
-                        onValueChange = { searchQuery = it },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 20.dp, vertical = 12.dp),
-                        placeholder = {
-                            Text(
-                                "¿Qué estás buscando?",
-                                color = Color.White.copy(alpha = 0.6f)
-                            )
-                        },
-                        leadingIcon = { Icon(Icons.Default.Search, null, tint = Color.White) },
-                        trailingIcon = {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                if (searchQuery.isNotEmpty()) {
-                                    IconButton(onClick = {
-                                        searchQuery = ""; focusManager.clearFocus()
-                                    }) {
-                                        Icon(Icons.Default.Clear, null, tint = Color.White)
-                                    }
-                                }
-                                // Icono de Filtro (Bottom Sheet)
-                                IconButton(onClick = { showSheet = true }) {
-                                    Icon(
-                                        imageVector = Icons.Default.FilterList,
-                                        contentDescription = "Filtrar por categoría",
-                                        tint = if (selectedCategory == "Todas") Color.White else Color(
-                                            0xFF43A047
-                                        )
-                                    )
-                                }
-                            }
-                        },
-                        shape = RoundedCornerShape(16.dp),
-                        singleLine = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedContainerColor = Color.White.copy(alpha = 0.15f),
-                            unfocusedContainerColor = Color.White.copy(alpha = 0.05f),
-                            focusedBorderColor = Color.White,
-                            unfocusedBorderColor = Color.White.copy(alpha = 0.3f),
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White
-                        )
-                    )
-
-                    // Mensaje si hay un filtro activo
-                    if (selectedCategory != "Todas") {
-                        Text(
-                            text = "Mostrando: $selectedCategory",
-                            color = Color.White.copy(alpha = 0.7f),
-                            style = MaterialTheme.typography.labelSmall,
-                            modifier = Modifier.padding(start = 24.dp, bottom = 8.dp)
-                        )
+                when {
+                    productList == null -> {
+                        // ESTADO 1: CARGANDO (Firestore todavía no respondió)
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .weight(1f),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(color = Color.White)
+                        }
                     }
 
-                    // --- GRILLA DE PRODUCTOS ---
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(2),
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(
-                            bottom = paddingInterno.calculateBottomPadding() + 80.dp,
-                            start = 12.dp,
-                            end = 12.dp,
-                            top = 8.dp
-                        )
-                    ) {
-                        items(filteredProducts, key = { it.id }) { producto ->
-                            val estaMarcado = seleccionados.contains(producto.id)
-                            Box(
-                                modifier = Modifier
-                                    .padding(6.dp)
-                                    .combinedClickable(
-                                        onClick = {
-                                            if (esModoSeleccion) {
-                                                seleccionados =
-                                                    if (estaMarcado) seleccionados - producto.id else seleccionados + producto.id
-                                            } else {
-                                                productoAEditar = producto
-                                            }
-                                        },
-                                        onLongClick = {
-                                            if (!esModoSeleccion) seleccionados = setOf(producto.id)
-                                        }
-                                    )
-                            ) {
-                                ProductCard(
-                                    item = producto,
-                                    estaSeleccionado = estaMarcado,
-                                    modoSeleccionActivo = esModoSeleccion
+                    productList!!.isEmpty() -> {
+                        // ESTADO 2: LA ALACENA ESTÁ REALMENTE VACÍA
+                        EmptyInventoryState()
+                    }
+
+                    else -> {
+                        // ESTADO 3: HAY PRODUCTOS
+
+                        // 1. Buscador
+                        OutlinedTextField(
+                            value = searchQuery,
+                            onValueChange = { searchQuery = it },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 20.dp, vertical = 12.dp),
+                            placeholder = {
+                                Text(
+                                    "¿Qué estás buscando?",
+                                    color = Color.White.copy(alpha = 0.6f)
                                 )
+                            },
+                            leadingIcon = { Icon(Icons.Default.Search, null, tint = Color.White) },
+                            trailingIcon = {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    if (searchQuery.isNotEmpty()) {
+                                        IconButton(onClick = {
+                                            searchQuery = ""; focusManager.clearFocus()
+                                        }) {
+                                            Icon(Icons.Default.Clear, null, tint = Color.White)
+                                        }
+                                    }
+                                    IconButton(onClick = { showSheet = true }) {
+                                        Icon(
+                                            imageVector = Icons.Default.FilterList,
+                                            contentDescription = "Filtrar por categoría",
+                                            tint = if (selectedCategory == "Todas") Color.White else Color(
+                                                0xFF43A047
+                                            )
+                                        )
+                                    }
+                                }
+                            },
+                            shape = RoundedCornerShape(16.dp),
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedContainerColor = Color.White.copy(alpha = 0.15f),
+                                unfocusedContainerColor = Color.White.copy(alpha = 0.05f),
+                                focusedBorderColor = Color.White,
+                                unfocusedBorderColor = Color.White.copy(alpha = 0.3f),
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White
+                            )
+                        )
+
+                        // Mensaje si hay un filtro activo
+                        if (selectedCategory != "Todas") {
+                            Text(
+                                text = "Mostrando: $selectedCategory",
+                                color = Color.White.copy(alpha = 0.7f),
+                                style = MaterialTheme.typography.labelSmall,
+                                modifier = Modifier.padding(start = 24.dp, bottom = 8.dp)
+                            )
+                        }
+
+                        // --- GRILLA DE PRODUCTOS ---
+                        LazyVerticalGrid(
+                            columns = GridCells.Fixed(2),
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(
+                                bottom = paddingInterno.calculateBottomPadding() + 80.dp,
+                                start = 12.dp,
+                                end = 12.dp,
+                                top = 8.dp
+                            )
+                        ) {
+                            items(filteredProducts, key = { it.id }) { producto ->
+                                val estaMarcado = seleccionados.contains(producto.id)
+                                Box(
+                                    modifier = Modifier
+                                        .padding(6.dp)
+                                        .combinedClickable(
+                                            onClick = {
+                                                if (esModoSeleccion) {
+                                                    seleccionados =
+                                                        if (estaMarcado) seleccionados - producto.id else seleccionados + producto.id
+                                                } else {
+                                                    productoAEditar = producto
+                                                }
+                                            },
+                                            onLongClick = {
+                                                if (!esModoSeleccion) seleccionados =
+                                                    setOf(producto.id)
+                                            }
+                                        )
+                                ) {
+                                    ProductCard(
+                                        item = producto,
+                                        estaSeleccionado = estaMarcado,
+                                        modoSeleccionActivo = esModoSeleccion
+                                    )
+                                }
                             }
                         }
                     }
@@ -292,7 +307,7 @@ fun HomeScreen(
                     ModalBottomSheet(
                         onDismissRequest = { showSheet = false },
                         sheetState = sheetState,
-                        containerColor = Color(0xFF1C1C1C), // Gris muy oscuro
+                        containerColor = Color(0xFF1C1C1C),
                         contentColor = Color.White,
                         tonalElevation = 8.dp
                     ) {
@@ -347,7 +362,7 @@ fun HomeScreen(
                         }
                     }
                 }
-                // Diálogos se mantienen igual
+
                 if (productoAEditar != null) {
                     AddProductDialog(
                         product = productoAEditar,
