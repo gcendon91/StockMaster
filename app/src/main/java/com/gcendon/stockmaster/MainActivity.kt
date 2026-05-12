@@ -34,6 +34,7 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Face
+import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.PhotoLibrary
@@ -52,7 +53,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MaterialTheme.typography
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
@@ -93,6 +93,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import coil.compose.AsyncImage
 import com.gcendon.stockmaster.ui.components.AddProductDialog
+import com.gcendon.stockmaster.ui.components.HouseholdMembersSheet
 import com.gcendon.stockmaster.ui.screens.CategoryScreen
 import com.gcendon.stockmaster.ui.screens.HomeScreen
 import com.gcendon.stockmaster.ui.screens.LoginScreen
@@ -136,6 +137,9 @@ class MainActivity : ComponentActivity() {
             val clipboardManager = LocalClipboardManager.current
 
             var isLoadingCheck by remember { mutableStateOf(true) }
+
+            var showMembersSheet by remember { mutableStateOf(false) }
+            val members by viewModel.members.collectAsState()
 
             val db = FirebaseFirestore.getInstance()
             var isUpdateRequired by remember { mutableStateOf(false) }
@@ -226,9 +230,9 @@ class MainActivity : ComponentActivity() {
                 LaunchedEffect(userState) {
                     if (userState != null && userState?.isEmailVerified == true) {
                         viewModel.setupUserAndHousehold(userState!!.uid)
+                        viewModel.listenToMembers()
                     }
                 }
-
 
                 if (isLoadingCheck) {
                     SplashScreenSimple()
@@ -467,6 +471,22 @@ class MainActivity : ComponentActivity() {
                                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                                 )
                                 NavigationDrawerItem(
+                                    icon = { Icon(Icons.Default.Group, null) },
+                                    label = {
+                                        Text(
+                                            "MIEMBROS DEL HOGAR",
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                    },
+                                    selected = false,
+                                    onClick = {
+                                        scope.launch { drawerState.close() }
+                                        showMembersSheet = true
+                                    },
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                                )
+
+                                NavigationDrawerItem(
                                     icon = {
                                         Icon(
                                             Icons.Default.ExitToApp, null, tint = Color.LightGray
@@ -634,6 +654,16 @@ class MainActivity : ComponentActivity() {
                                             )
                                         }
                                     })
+                            }
+                            if (showMembersSheet) {
+                                HouseholdMembersSheet(
+                                    onDismiss = { showMembersSheet = false },
+                                    members = members,
+                                    currentUserUid = userState?.uid,
+                                    onRemoveMember = { uid ->
+                                        viewModel.removeUserFromHousehold(uid)
+                                    }
+                                )
                             }
                         }
                     }

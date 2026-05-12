@@ -6,6 +6,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.gcendon.stockmaster.data.AppUser
 import com.gcendon.stockmaster.data.Category
 import com.gcendon.stockmaster.data.Product
 import com.google.firebase.Firebase
@@ -23,6 +24,10 @@ import kotlinx.coroutines.flow.stateIn
 class ProductViewModel : ViewModel() {
     private val db = Firebase.firestore // Referencia a la base de datos
     private val auth = FirebaseAuth.getInstance()
+
+    //Estado para los miembros
+    private val _members = MutableStateFlow<List<AppUser>>(emptyList())
+    val members = _members.asStateFlow()
 
     var dynamicEmojiMap by mutableStateOf<Map<String, String>>(emptyMap())
         private set
@@ -64,6 +69,44 @@ class ProductViewModel : ViewModel() {
             setupUserAndHousehold(uid)
         }
         listenToEmojiConfig()
+    }
+
+    fun listenToMembers() {
+        val hId = householdId ?: return
+        db.collection("users")
+            .whereEqualTo("householdId", hId)
+            .addSnapshotListener { snapshot, _ ->
+                val membersList = snapshot?.documents?.mapNotNull { doc ->
+                    val email = doc.getString("email") ?: ""
+                    val storedName = doc.getString("displayName")
+
+                    // LÓGICA DE EMERGENCIA:
+                    // Si el nombre es nulo, vacío o el genérico, sacamos el nombre del email
+                    val finalName =
+                        if (storedName.isNullOrBlank() || storedName == "Usuario Master") {
+                            email.substringBefore("@").replaceFirstChar { it.uppercase() }
+                        } else {
+                            storedName
+                        }
+
+                    AppUser(
+                        uid = doc.id,
+                        displayName = finalName,
+                        email = email,
+                        photoUrl = doc.getString("photoUrl") ?: ""
+                    )
+                } ?: emptyList()
+
+                _members.value = membersList
+            }
+    }
+
+    fun removeUserFromHousehold(targetUid: String) {
+        db.collection("users").document(targetUid)
+            .update("householdId", targetUid)
+            .addOnSuccessListener {
+                Log.d("HOGAR", "Usuario expulsado correctamente")
+            }
     }
 
     private fun listenToEmojiConfig() {
@@ -360,34 +403,57 @@ class ProductViewModel : ViewModel() {
 
     fun setupUserAndHousehold(uid: String) {
         val userRef = db.collection("users").document(uid)
+        val currentUser = auth.currentUser // Obtenemos el usuario de Auth (Google o Email)
 
         userRef.get().addOnSuccessListener { doc ->
+            // --- LÓGICA DE NOMBRE (Tu syncUserProfile) ---
+            val nameFromAuth = currentUser?.displayName
+            val namePlaceholder =
+                currentUser?.email?.substringBefore("@")?.replaceFirstChar { it.uppercase() }
+                    ?: "Usuario Master"
+
+            // El nombre final será: El de Google si existe, sino el placeholder del email
+            val finalName = if (!nameFromAuth.isNullOrEmpty()) nameFromAuth else namePlaceholder
+            val finalPhoto = currentUser?.photoUrl?.toString() ?: ""
+
             if (doc.exists()) {
-                // 1. Obtenemos el ID y lo guardamos en la variable de la clase
+                // EL USUARIO YA EXISTE: Actualizamos por si cambió algo en su perfil
                 val hId = doc.getString("householdId") ?: uid
                 this.householdId = hId
 
-                // 2. Pasamos 'hId' a todas las funciones que lo necesitan
-                fetchOrCreateInviteCode(hId) // Asegurate que esta reciba el String
-                listenToProducts(hId)        // Pasamos el ID
-                listenToHouseholdCategories(hId) // <--- AGREGAMOS ESTA
+                val updates = hashMapOf(
+                    "displayName" to (doc.getString("displayName")
+                        ?: finalName), // Mantenemos el de Firestore si ya tiene uno
+                    "photoUrl" to finalPhoto,
+                    "email" to (currentUser?.email ?: "")
+                )
+                userRef.update(updates as Map<String, Any>)
+
+                // Lanzamos todo lo demás
+                fetchOrCreateInviteCode(hId)
+                listenToProducts(hId)
+                listenToHouseholdCategories(hId)
+                listenToMembers()
 
                 hasSeenOnboarding = doc.getBoolean("has_seen_onboarding") ?: false
             } else {
-                // Usuario nuevo: creamos su casa inicial
-                val email = auth.currentUser?.email
-                val initialData = mapOf(
-                    "email" to email,
-                    "householdId" to uid,
+                // USUARIO NUEVO: Creamos el documento desde cero
+                val initialData = hashMapOf(
+                    "uid" to uid,
+                    "displayName" to finalName,
+                    "email" to (currentUser?.email ?: ""),
+                    "photoUrl" to finalPhoto,
+                    "householdId" to uid, // Su propia casa por defecto
                     "createdAt" to com.google.firebase.Timestamp.now(),
                     "has_seen_onboarding" to false
                 )
+
                 userRef.set(initialData).addOnSuccessListener {
                     this.householdId = uid
-
                     fetchOrCreateInviteCode(uid)
                     listenToProducts(uid)
                     listenToHouseholdCategories(uid)
+                    listenToMembers()
                 }
             }
         }
