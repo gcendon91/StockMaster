@@ -60,6 +60,8 @@ import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -130,6 +132,7 @@ class MainActivity : ComponentActivity() {
             var showProfileOptions by remember { mutableStateOf(false) }
             val isFullyAuthenticated = userState != null && userState?.isEmailVerified == true
             val needsOnboarding = !viewModel.hasSeenOnboarding
+            val snackbarHostState = remember { SnackbarHostState() }
 
             val navBackStackEntry by navController.currentBackStackEntryAsState()
             val currentRoute = navBackStackEntry?.destination?.route
@@ -147,22 +150,21 @@ class MainActivity : ComponentActivity() {
             // Obtenemos la versión real instalada preguntándole al Sistema Operativo
             val currentVersion = remember {
                 try {
-                    val packageInfo =
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                            context.packageManager.getPackageInfo(
-                                context.packageName,
-                                android.content.pm.PackageManager.PackageInfoFlags.of(0)
-                            )
-                        } else {
-                            @Suppress("DEPRECATION")
-                            context.packageManager.getPackageInfo(context.packageName, 0)
-                        }
+                    val packageInfo = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        context.packageManager.getPackageInfo(
+                            context.packageName,
+                            android.content.pm.PackageManager.PackageInfoFlags.of(0)
+                        )
+                    } else {
+                        @Suppress("DEPRECATION") context.packageManager.getPackageInfo(
+                            context.packageName, 0
+                        )
+                    }
 
                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
                         packageInfo.longVersionCode.toInt()
                     } else {
-                        @Suppress("DEPRECATION")
-                        packageInfo.versionCode
+                        @Suppress("DEPRECATION") packageInfo.versionCode
                     }
                 } catch (e: Exception) {
                     1 // Valor por defecto
@@ -171,14 +173,12 @@ class MainActivity : ComponentActivity() {
 
             //Consultamos a Firestore si esta versión es válida
             LaunchedEffect(Unit) {
-                db.collection("config").document("app_status")
-                    .get()
+                db.collection("config").document("app_status").get()
                     .addOnSuccessListener { document ->
                         val minVersion = document.getLong("min_version") ?: 0L
                         isUpdateRequired = currentVersion < minVersion.toInt()
                         isLoadingCheck = false // YA TENEMOS LA RESPUESTA
-                    }
-                    .addOnFailureListener {
+                    }.addOnFailureListener {
                         isLoadingCheck = false // SI FALLA, TAMBIÉN DEJAMOS DE CARGAR
                     }
             }
@@ -231,6 +231,12 @@ class MainActivity : ComponentActivity() {
                     if (userState != null && userState?.isEmailVerified == true) {
                         viewModel.setupUserAndHousehold(userState!!.uid)
                         viewModel.listenToMembers()
+                    }
+                }
+
+                LaunchedEffect(Unit) {
+                    viewModel.uiEvent.collect { mensaje ->
+                        snackbarHostState.showSnackbar(mensaje)
                     }
                 }
 
@@ -474,8 +480,7 @@ class MainActivity : ComponentActivity() {
                                     icon = { Icon(Icons.Default.Group, null) },
                                     label = {
                                         Text(
-                                            "MIEMBROS DEL HOGAR",
-                                            fontWeight = FontWeight.Bold
+                                            "MIEMBROS DEL HOGAR", fontWeight = FontWeight.Bold
                                         )
                                     },
                                     selected = false,
@@ -509,6 +514,7 @@ class MainActivity : ComponentActivity() {
                         }) {
                         Scaffold(
                             modifier = Modifier.fillMaxSize(),
+                            snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
                             floatingActionButtonPosition = FabPosition.Center,
                             floatingActionButton = {
                                 // El botón de agregar producto solo aparece en la Home
@@ -560,22 +566,12 @@ class MainActivity : ComponentActivity() {
                             if (showJoinDialog) {
                                 JoinHouseholdDialog(
                                     onDismiss = { showJoinDialog = false },
-                                    onJoin = { nuevoCodigo, alTerminar -> // Recibimos el callback 'alTerminar'
-                                        viewModel.joinHousehold(nuevoCodigo) { success, mensaje ->
-                                            // 1. Avisamos al diálogo que deje de cargar (sea éxito o error)
-                                            alTerminar()
+                                    onJoin = { codigoIngresado ->
+                                        viewModel.joinHousehold(codigoIngresado)
 
-                                            // 2. Mostramos el mensaje (Toast)
-                                            Toast.makeText(
-                                                context, mensaje, Toast.LENGTH_SHORT
-                                            ).show()
-
-                                            // 3. Si fue exitoso, cerramos el diálogo
-                                            if (success) {
-                                                showJoinDialog = false
-                                            }
-                                        }
-                                    })
+                                        showJoinDialog = false
+                                    }
+                                )
                             }
                             if (showProfileOptions) {
                                 AlertDialog(
@@ -662,8 +658,12 @@ class MainActivity : ComponentActivity() {
                                     currentUserUid = userState?.uid,
                                     onRemoveMember = { uid ->
                                         viewModel.removeUserFromHousehold(uid)
-                                    }
-                                )
+                                    },
+                                    householdId = viewModel.householdId,
+                                    onLeaveHousehold = {
+                                        viewModel.leaveHousehold()
+                                        showMembersSheet = false
+                                    })
                             }
                         }
                     }
@@ -724,8 +724,7 @@ fun UpdateRequiredScreen(context: android.content.Context) {
                 .background(
                     brush = Brush.verticalGradient(
                         colors = listOf(
-                            Color.Black.copy(alpha = 0.7f),
-                            Color.Black.copy(alpha = 0.9f)
+                            Color.Black.copy(alpha = 0.7f), Color.Black.copy(alpha = 0.9f)
                         )
                     )
                 )
@@ -786,8 +785,7 @@ fun UpdateRequiredScreen(context: android.content.Context) {
                     context.startActivity(intent)
                 },
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color(0xFF43A047),
-                    contentColor = Color.White
+                    containerColor = Color(0xFF43A047), contentColor = Color.White
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
@@ -799,9 +797,7 @@ fun UpdateRequiredScreen(context: android.content.Context) {
                     Icon(Icons.Default.CloudDownload, contentDescription = null)
                     Spacer(modifier = Modifier.width(12.dp))
                     Text(
-                        "ACTUALIZAR AHORA",
-                        fontWeight = FontWeight.Black,
-                        letterSpacing = 1.sp
+                        "ACTUALIZAR AHORA", fontWeight = FontWeight.Black, letterSpacing = 1.sp
                     )
                 }
             }
@@ -820,7 +816,7 @@ fun UpdateRequiredScreen(context: android.content.Context) {
 @Composable
 fun JoinHouseholdDialog(
     onDismiss: () -> Unit,
-    onJoin: (String, onResult: () -> Unit) -> Unit // Agregamos un callback de finalización
+    onJoin: (String) -> Unit
 ) {
     var code by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
@@ -850,16 +846,14 @@ fun JoinHouseholdDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    isLoading = true
-                    // Llamamos a unJoin y le pasamos qué hacer cuando termine
-                    onJoin(code) {
-                        isLoading = false // <--- ESTO es lo que lo destraba si falla
+                    if (code.length == 6) {
+                        onJoin(code)
                     }
                 },
-                enabled = code.length == 6 && !isLoading,
+                enabled = code.length == 6,
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A237E))
             ) {
-                Text(if (isLoading) "Verificando..." else "Unirse")
+                Text("Unirse")
             }
         },
         dismissButton = {
@@ -915,8 +909,7 @@ fun SplashScreenSimple() {
                 .background(
                     brush = Brush.verticalGradient(
                         colors = listOf(
-                            Color.Black.copy(alpha = 0.4f),
-                            Color.Black.copy(alpha = 0.8f)
+                            Color.Black.copy(alpha = 0.4f), Color.Black.copy(alpha = 0.8f)
                         )
                     )
                 )
@@ -947,9 +940,7 @@ fun SplashScreenSimple() {
 
             // El indicador de carga
             CircularProgressIndicator(
-                modifier = Modifier.size(32.dp),
-                color = Color.White,
-                strokeWidth = 3.dp
+                modifier = Modifier.size(32.dp), color = Color.White, strokeWidth = 3.dp
             )
         }
     }

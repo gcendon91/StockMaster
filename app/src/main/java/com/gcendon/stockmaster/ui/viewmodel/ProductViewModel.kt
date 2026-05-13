@@ -13,13 +13,15 @@ import com.google.firebase.Firebase
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.firestore.firestore
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-
+import kotlinx.coroutines.launch
 
 class ProductViewModel : ViewModel() {
     private val db = Firebase.firestore // Referencia a la base de datos
@@ -28,6 +30,9 @@ class ProductViewModel : ViewModel() {
     //Estado para los miembros
     private val _members = MutableStateFlow<List<AppUser>>(emptyList())
     val members = _members.asStateFlow()
+
+    private val _uiEvent = MutableSharedFlow<String>()
+    val uiEvent = _uiEvent.asSharedFlow()
 
     var dynamicEmojiMap by mutableStateOf<Map<String, String>>(emptyMap())
         private set
@@ -281,30 +286,47 @@ class ProductViewModel : ViewModel() {
         }
     }
 
-    fun joinHousehold(shortCode: String, onResult: (Boolean, String) -> Unit) {
+    fun joinHousehold(shortCode: String) {
         val uid = auth.currentUser?.uid ?: return
         val codeUpper = shortCode.uppercase().trim()
 
-        db.collection("invitations").document(codeUpper).get().addOnSuccessListener { doc ->
-            if (doc.exists()) {
-                val realId = doc.getString("householdId") ?: ""
+        val isOwner = householdId == uid
+        val hasOtherMembers = _members.value.size > 1
 
-                db.collection("users").document(uid).update("householdId", realId)
-                    .addOnSuccessListener {
-                        this.householdId = realId
-
-                        fetchOrCreateInviteCode(realId)
-                        listenToProducts(realId)
-                        listenToHouseholdCategories(realId) //
-
-                        onResult(true, "¡Te uniste con éxito!")
-                    }
-            } else {
-                onResult(false, "El código no existe o es incorrecto.")
+        viewModelScope.launch {
+            // 1. Validación de Regla de Negocio
+            if (isOwner && hasOtherMembers) {
+                _uiEvent.emit("Sos el administrador. Para unirte a otro hogar, primero debés eliminar a todos los miembros actuales.")
+                return@launch
             }
-        }.addOnFailureListener {
-            onResult(false, "Error de conexión: ${it.message}")
+
+            // 2. Consulta a Firebase (usando el listener de éxito/error)
+            db.collection("invitations").document(codeUpper).get()
+                .addOnSuccessListener { doc ->
+                    if (doc.exists()) {
+                        val realId = doc.getString("householdId") ?: ""
+
+                        actualizarUsuarioYHogar(uid, realId)
+                    } else {
+                        viewModelScope.launch { _uiEvent.emit("El código no existe o es incorrecto.") }
+                    }
+                }
+                .addOnFailureListener {
+                    viewModelScope.launch { _uiEvent.emit("Error de conexión: ${it.message}") }
+                }
         }
+    }
+
+    private fun actualizarUsuarioYHogar(uid: String, realId: String) {
+        db.collection("users").document(uid).update("householdId", realId)
+            .addOnSuccessListener {
+                this.householdId = realId
+                fetchOrCreateInviteCode(realId)
+                listenToProducts(realId)
+                listenToHouseholdCategories(realId)
+
+                viewModelScope.launch { _uiEvent.emit("¡Te uniste con éxito!") }
+            }
     }
 
     fun loginWithEmail(e: String, p: String, onResult: (String?) -> Unit) {
@@ -522,6 +544,20 @@ class ProductViewModel : ViewModel() {
                 onResult(errorMsg)
             }
         }
+    }
+
+    fun leaveHousehold() {
+        val uid = auth.currentUser?.uid ?: return
+
+        db.collection("users").document(uid)
+            .update("householdId", uid) // Vuelve a ser su propia casa vacía
+            .addOnSuccessListener {
+                this.householdId = uid
+                // Recargamos los listeners para que vea su inventario (ahora vacío)
+                listenToProducts(uid)
+                listenToHouseholdCategories(uid)
+                listenToMembers()
+            }
     }
 
 }

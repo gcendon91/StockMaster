@@ -49,17 +49,21 @@ fun HouseholdMembersSheet(
     onDismiss: () -> Unit,
     members: List<AppUser>,
     currentUserUid: String?,
-    onRemoveMember: (String) -> Unit
+    householdId: String?,
+    onRemoveMember: (String) -> Unit,
+    onLeaveHousehold: () -> Unit
 ) {
     var memberToDelete by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var showLeaveConfirmation by remember { mutableStateOf(false) }
+
+    val isCurrentUserAdmin = currentUserUid == householdId
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         containerColor = Color(0xFF1C1C1C), // Gris muy oscuro coherente con el filtro
         contentColor = Color.White,
         tonalElevation = 16.dp,
-        dragHandle = { BottomSheetDefaults.DragHandle(color = Color.White.copy(alpha = 0.3f)) }
-    ) {
+        dragHandle = { BottomSheetDefaults.DragHandle(color = Color.White.copy(alpha = 0.3f)) }) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -85,17 +89,18 @@ fun HouseholdMembersSheet(
                     items(members) { member ->
                         // Ahora accedemos directo a las propiedades del objeto AppUser
                         val isMe = member.uid == currentUserUid
+                        val isMemberAdmin = member.uid == householdId
+
+                        val canDeleteThisMember = isCurrentUserAdmin && !isMe && !isMemberAdmin
 
                         MemberItem(
                             name = member.displayName,
                             email = member.email,
                             photoUrl = member.photoUrl,
                             isMe = isMe,
-                            onRemove = {
-                                // Usamos las propiedades para la confirmación de borrado
-                                memberToDelete = member.uid to member.displayName
-                            }
-                        )
+                            isAdmin = isMemberAdmin, // Pasamos este dato para ponerle un "título" visual
+                            showDeleteButton = canDeleteThisMember, // Nuevo parámetro en tu MemberItem
+                            onRemove = { memberToDelete = member.uid to member.displayName })
                     }
                 }
             }
@@ -109,8 +114,7 @@ fun HouseholdMembersSheet(
             textContentColor = Color.White.copy(alpha = 0.7f),
             title = {
                 Text(
-                    "¿Eliminar miembro?",
-                    fontWeight = FontWeight.Bold
+                    "¿Eliminar miembro?", fontWeight = FontWeight.Bold
                 )
             },
             text = {
@@ -121,8 +125,7 @@ fun HouseholdMembersSheet(
                     onClick = {
                         onRemoveMember(memberToDelete!!.first)
                         memberToDelete = null // Cerramos el diálogo después de borrar
-                    }
-                ) {
+                    }) {
                     Text("ELIMINAR", color = Color(0xFFFF8A80), fontWeight = FontWeight.Bold)
                 }
             },
@@ -130,8 +133,30 @@ fun HouseholdMembersSheet(
                 TextButton(onClick = { memberToDelete = null }) {
                     Text("CANCELAR", color = Color.White)
                 }
-            }
-        )
+            })
+    }
+    if (showLeaveConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showLeaveConfirmation = false },
+            containerColor = Color(0xFF2C2C2C),
+            titleContentColor = Color.White,
+            textContentColor = Color.White.copy(alpha = 0.7f),
+            title = { Text("¿Salir del hogar?") },
+            text = { Text("Dejarás de ver el inventario compartido. Volverás a tu propio hogar.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    onLeaveHousehold()
+                    showLeaveConfirmation = false
+                    onDismiss() // Cerramos el sheet
+                }) {
+                    Text("SALIR", color = Color(0xFFFF8A80), fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showLeaveConfirmation = false }) {
+                    Text("CANCELAR", color = Color.White)
+                }
+            })
     }
 }
 
@@ -142,6 +167,8 @@ fun MemberItem(
     email: String,
     photoUrl: String?,
     isMe: Boolean,
+    isAdmin: Boolean,           // <--- Nuevo parámetro
+    showDeleteButton: Boolean,  // <--- Nuevo parámetro
     onRemove: () -> Unit
 ) {
     Surface(
@@ -161,7 +188,7 @@ fun MemberItem(
                 shape = CircleShape,
                 color = Color.White.copy(alpha = 0.1f)
             ) {
-                if (photoUrl != null) {
+                if (photoUrl?.isNotEmpty() == true) {
                     AsyncImage(
                         model = photoUrl,
                         contentDescription = null,
@@ -180,10 +207,17 @@ fun MemberItem(
             Spacer(modifier = Modifier.width(16.dp))
 
             Column(modifier = Modifier.weight(1f)) {
+                // Lógica de nombre para que quede bien claro
+                val displayTitle = buildString {
+                    append(name)
+                    if (isMe) append(" (Vos)")
+                    if (isAdmin) append(" 👑") // Podés cambiarlo por " (Dueño)" si preferís sin emojis
+                }
+
                 Text(
-                    text = if (isMe) "$name (Vos)" else name,
+                    text = displayTitle,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    color = if (isAdmin) Color(0xFF43A047) else Color.White // Resaltamos al dueño en verde
                 )
                 Text(
                     text = email,
@@ -192,7 +226,8 @@ fun MemberItem(
                 )
             }
 
-            if (!isMe) {
+            // ACÁ USAMOS LA VARIABLE PARA MOSTRAR U OCULTAR EL BOTÓN
+            if (showDeleteButton) {
                 IconButton(
                     onClick = onRemove,
                     modifier = Modifier.background(Color.Red.copy(alpha = 0.1f), CircleShape)
