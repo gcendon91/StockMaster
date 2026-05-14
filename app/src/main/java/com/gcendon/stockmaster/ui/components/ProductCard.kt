@@ -181,9 +181,9 @@ fun ProductCard(
 
                 // 2. NOMBRE
                 Text(
-                    text = item.name.uppercase(),
-                    style = MaterialTheme.typography.titleSmall.copy(lineHeight = 16.sp),
-                    fontWeight = FontWeight.Black,
+                    text = item.name.lowercase().replaceFirstChar { it.uppercase() },
+                    style = MaterialTheme.typography.titleMedium.copy(lineHeight = 16.sp),
+                    fontWeight = FontWeight.Bold,
                     color = Color(0xFF212121),
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
@@ -206,7 +206,7 @@ fun ProductCard(
                     Surface(
                         shape = RoundedCornerShape(8.dp),
                         color = colorEstado.copy(alpha = 0.1f),
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier.size(48.dp)
                     ) {
                         Box(
                             modifier = Modifier
@@ -222,7 +222,7 @@ fun ProductCard(
                                 Icons.Default.Remove,
                                 null,
                                 tint = colorEstado,
-                                modifier = Modifier.size(20.dp)
+                                modifier = Modifier.size(28.dp)
                             )
                         }
                     }
@@ -250,7 +250,7 @@ fun ProductCard(
                         )
                         Text(
                             text = item.unit.lowercase(),
-                            style = MaterialTheme.typography.labelSmall,
+                            style = MaterialTheme.typography.labelMedium,
                             color = Color.Gray
                         )
                     }
@@ -259,7 +259,7 @@ fun ProductCard(
                     Surface(
                         shape = RoundedCornerShape(8.dp),
                         color = colorEstado.copy(alpha = 0.1f),
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier.size(48.dp)
                     ) {
                         Box(
                             modifier = Modifier
@@ -273,7 +273,7 @@ fun ProductCard(
                                 Icons.Default.Add,
                                 null,
                                 tint = colorEstado,
-                                modifier = Modifier.size(20.dp)
+                                modifier = Modifier.size(28.dp)
                             )
                         }
                     }

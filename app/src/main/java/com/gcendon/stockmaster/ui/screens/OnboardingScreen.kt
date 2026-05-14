@@ -310,7 +310,7 @@ fun HogarMockup() {
     ) {
         // Simulación de la cabecera del Drawer
         Text(
-            "GESTIÓN DE HOGAR",
+            "Gestión de hogar",
             style = MaterialTheme.typography.labelLarge,
             fontWeight = FontWeight.Bold,
             color = Color.White.copy(alpha = 0.6f)
@@ -366,7 +366,7 @@ fun HogarMockup() {
             Icon(Icons.Default.Add, null, tint = Color(0xFF43A047), modifier = Modifier.size(18.dp))
             Spacer(modifier = Modifier.width(8.dp))
             Text(
-                "UNIRSE A OTRO HOGAR",
+                "Unirse a otro hogar",
                 color = Color(0xFF43A047),
                 fontWeight = FontWeight.Bold,
                 fontSize = 11.sp

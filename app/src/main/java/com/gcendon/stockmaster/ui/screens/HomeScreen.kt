@@ -13,12 +13,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckCircle
@@ -127,7 +129,8 @@ fun HomeScreen(
                     title = {
                         Text(
                             text = if (esModoSeleccion) "${seleccionados.size} seleccionados" else "MI STOCK",
-                            fontWeight = FontWeight.Black,
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.headlineSmall,
                             letterSpacing = 2.sp,
                             color = Color.White
                         )
@@ -212,21 +215,39 @@ fun HomeScreen(
                             onValueChange = { searchQuery = it },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 20.dp, vertical = 12.dp),
+                                .padding(
+                                    horizontal = 16.dp,
+                                    vertical = 8.dp
+                                ), // Un poquito más de aire a los costados
                             placeholder = {
                                 Text(
                                     "¿Qué estás buscando?",
-                                    color = Color.White.copy(alpha = 0.6f)
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = Color.White.copy(alpha = 0.5f)
                                 )
                             },
-                            leadingIcon = { Icon(Icons.Default.Search, null, tint = Color.White) },
+                            leadingIcon = {
+                                Icon(
+                                    Icons.Default.Search,
+                                    null,
+                                    tint = Color.White.copy(alpha = 0.7f),
+                                    modifier = Modifier.size(22.dp)
+                                )
+                            },
                             trailingIcon = {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                Row(
+                                    modifier = Modifier.padding(end = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
                                     if (searchQuery.isNotEmpty()) {
                                         IconButton(onClick = {
                                             searchQuery = ""; focusManager.clearFocus()
                                         }) {
-                                            Icon(Icons.Default.Clear, null, tint = Color.White)
+                                            Icon(
+                                                Icons.Default.Clear,
+                                                null,
+                                                tint = Color.White.copy(alpha = 0.7f)
+                                            )
                                         }
                                     }
                                     IconButton(onClick = { showSheet = true }) {
@@ -240,15 +261,16 @@ fun HomeScreen(
                                     }
                                 }
                             },
-                            shape = RoundedCornerShape(16.dp),
+                            shape = CircleShape, // <--- EL CAMBIO CLAVE
                             singleLine = true,
                             colors = OutlinedTextFieldDefaults.colors(
-                                focusedContainerColor = Color.White.copy(alpha = 0.15f),
-                                unfocusedContainerColor = Color.White.copy(alpha = 0.05f),
-                                focusedBorderColor = Color.White,
-                                unfocusedBorderColor = Color.White.copy(alpha = 0.3f),
                                 focusedTextColor = Color.White,
-                                unfocusedTextColor = Color.White
+                                unfocusedTextColor = Color.White,
+                                focusedContainerColor = Color.White.copy(alpha = 0.12f),
+                                unfocusedContainerColor = Color.White.copy(alpha = 0.05f),
+                                focusedBorderColor = Color.White.copy(alpha = 0.5f), // Borde más sutil
+                                unfocusedBorderColor = Color.White.copy(alpha = 0.15f), // Borde tenue
+                                cursorColor = Color.White
                             )
                         )
 

@@ -20,6 +20,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -38,6 +42,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.layout.ContentScale
@@ -121,45 +126,39 @@ fun LoginScreen(viewModel: ProductViewModel) {
         ) {
             // --- MARCA PROTAGONISTA ---
             Text(
-                text = "STOCK\nMASTER",
+                text = "Stock\nMaster", // Sentence Case
                 color = Color.White,
-                fontSize = 64.sp,
-                lineHeight = 56.sp,
-                fontWeight = FontWeight.Black,
-                letterSpacing = 10.sp,
-                textAlign = TextAlign.Center,
-                style = androidx.compose.ui.text.TextStyle(
+                style = MaterialTheme.typography.displayLarge.copy(
+                    fontSize = 58.sp,
+                    lineHeight = 54.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 4.sp,
                     shadow = Shadow(
-                        color = Color.Black.copy(alpha = 0.5f),
-                        offset = androidx.compose.ui.geometry.Offset(4f, 4f),
-                        blurRadius = 12f
+                        color = Color.Black.copy(alpha = 0.4f),
+                        offset = Offset.Zero,
+                        blurRadius = 15f
                     )
                 ),
-                modifier = Modifier.padding(bottom = 60.dp)
+                textAlign = TextAlign.Center
             )
 
-            // --- INPUTS REFORZADOS (Estilo Glassmorphism Claro) ---
             OutlinedTextField(
                 value = email,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 onValueChange = { email = it },
-                placeholder = { Text("Email", color = Color.White.copy(alpha = 0.7f)) },
+                placeholder = { Text("Email", color = Color.White.copy(alpha = 0.6f)) },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(bottom = 12.dp),
                 shape = RoundedCornerShape(16.dp),
                 leadingIcon = {
-                    Icon(
-                        painterResource(id = android.R.drawable.ic_dialog_email),
-                        contentDescription = null,
-                        tint = Color.White
-                    )
+                    Icon(Icons.Default.Email, contentDescription = null, tint = Color.White)
                 },
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedContainerColor = Color.White.copy(alpha = 0.15f),
                     unfocusedContainerColor = Color.White.copy(alpha = 0.05f),
                     focusedBorderColor = Color.White, // Borde blanco sólido al escribir
-                    unfocusedBorderColor = Color.White.copy(alpha = 0.4f), // Borde suave al estar quieto
+                    unfocusedBorderColor = Color.White.copy(alpha = 0.2f), // Borde suave al estar quieto
                     focusedTextColor = Color.White,
                     unfocusedTextColor = Color.White
                 )
@@ -174,7 +173,7 @@ fun LoginScreen(viewModel: ProductViewModel) {
                 shape = RoundedCornerShape(16.dp),
                 leadingIcon = {
                     Icon(
-                        painterResource(id = android.R.drawable.ic_lock_idle_lock),
+                        imageVector = Icons.Default.Lock,
                         contentDescription = null,
                         tint = Color.White
                     )
@@ -228,7 +227,7 @@ fun LoginScreen(viewModel: ProductViewModel) {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            painter = painterResource(id = android.R.drawable.stat_notify_error),
+                            imageVector = Icons.Default.ErrorOutline,
                             contentDescription = null,
                             tint = Color.White,
                             modifier = Modifier.size(20.dp)
@@ -244,7 +243,7 @@ fun LoginScreen(viewModel: ProductViewModel) {
                     }
                 }
             }
-            // --- BOTÓN PRINCIPAL (Sutil) ---
+            // --- BOTÓN PRINCIPAL ---
             Button(
                 onClick = {
                     errorMessage = null
@@ -291,13 +290,15 @@ fun LoginScreen(viewModel: ProductViewModel) {
                     .height(56.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.White.copy(alpha = 0.2f), contentColor = Color.White
+                    containerColor = Color.White.copy(alpha = 0.15f),
+                    contentColor = Color.White
                 ),
-                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.5f))
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.3f))
             ) {
                 Text(
-                    if (isRegistering) "CREAR CUENTA" else "INGRESAR",
-                    fontWeight = FontWeight.ExtraBold
+                    text = if (isRegistering) "Crear cuenta" else "Ingresar",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
                 )
             }
 
@@ -321,7 +322,8 @@ fun LoginScreen(viewModel: ProductViewModel) {
                     .height(56.dp),
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.White, contentColor = Color.Black
+                    containerColor = Color.White.copy(alpha = 0.9f),
+                    contentColor = Color.Black
                 ),
                 elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
             ) {

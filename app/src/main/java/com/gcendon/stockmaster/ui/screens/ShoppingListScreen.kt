@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -127,7 +128,8 @@ fun ShoppingListScreen(
                     title = {
                         Text(
                             "LISTA DE COMPRAS",
-                            fontWeight = FontWeight.Black,
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.headlineSmall,
                             letterSpacing = 2.sp,
                             color = Color.White
                         )
@@ -152,28 +154,45 @@ fun ShoppingListScreen(
                     onValueChange = { searchQuery = it },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 12.dp),
+                        .padding(
+                            horizontal = 16.dp,
+                            vertical = 8.dp
+                        ), // Reducimos un poco el padding para que no se vea tan "flotante"
                     placeholder = {
-                        Text("Buscar producto...", color = Color.White.copy(alpha = 0.6f))
+                        Text(
+                            "Buscar producto...",
+                            style = MaterialTheme.typography.bodyLarge, // Tipografía estándar de sistema
+                            color = Color.White.copy(alpha = 0.5f)
+                        )
                     },
                     leadingIcon = {
-                        Icon(Icons.Default.Search, null, tint = Color.White)
+                        Icon(
+                            Icons.Default.Search,
+                            null,
+                            tint = Color.White.copy(alpha = 0.7f),
+                            modifier = Modifier.size(20.dp) // Icono un poco más sutil
+                        )
                     },
                     trailingIcon = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            // Botón de Limpiar Búsqueda
+                        Row(
+                            modifier = Modifier.padding(end = 8.dp), // Espaciado interno para que no pegue al borde curvo
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             if (searchQuery.isNotEmpty()) {
                                 IconButton(onClick = {
                                     searchQuery = ""; focusManager.clearFocus()
                                 }) {
-                                    Icon(Icons.Default.Clear, null, tint = Color.White)
+                                    Icon(
+                                        Icons.Default.Clear,
+                                        null,
+                                        tint = Color.White.copy(alpha = 0.7f)
+                                    )
                                 }
                             }
-                            // Botón de Filtro (Cambia a VERDE si hay filtro activo)
                             IconButton(onClick = { showSheet = true }) {
                                 Icon(
                                     imageVector = Icons.Default.FilterList,
-                                    contentDescription = "Filtrar por categoría",
+                                    contentDescription = null,
                                     tint = if (selectedCategory == "Todas") Color.White else Color(
                                         0xFF43A047
                                     )
@@ -184,14 +203,14 @@ fun ShoppingListScreen(
                     keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                     keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
                     singleLine = true,
-                    shape = RoundedCornerShape(16.dp),
+                    shape = CircleShape, // <--- EL CAMBIO CLAVE: Forma de píldora total
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedTextColor = Color.White,
                         unfocusedTextColor = Color.White,
-                        focusedContainerColor = Color.White.copy(alpha = 0.15f),
+                        focusedContainerColor = Color.White.copy(alpha = 0.12f), // Un toque más sutil
                         unfocusedContainerColor = Color.White.copy(alpha = 0.05f),
-                        focusedBorderColor = Color.White,
-                        unfocusedBorderColor = Color.White.copy(alpha = 0.3f),
+                        focusedBorderColor = Color.White.copy(alpha = 0.5f), // No blanco puro, para que no "brille" de más
+                        unfocusedBorderColor = Color.White.copy(alpha = 0.15f), // Borde muy tenue
                         cursorColor = Color.White
                     )
                 )
@@ -236,7 +255,7 @@ fun ShoppingListScreen(
                             ) {
                                 Row(
                                     modifier = Modifier
-                                        .padding(12.dp)
+                                        .padding(horizontal = 16.dp, vertical = 12.dp)
                                         .fillMaxWidth(),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
@@ -246,7 +265,7 @@ fun ShoppingListScreen(
                                             prod.name,
                                             prod.category,
                                             viewModel.dynamicEmojiMap // <--- Conexión con la nube
-                                        ), fontSize = 28.sp
+                                        ), fontSize = 32.sp
                                     )
 
                                     Spacer(modifier = Modifier.width(12.dp))
@@ -254,13 +273,13 @@ fun ShoppingListScreen(
                                     // 2. NOMBRE CON SOPORTE PARA 2 LÍNEAS
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
-                                            text = prod.name.uppercase(),
+                                            text = prod.name.lowercase()
+                                                .replaceFirstChar { it.uppercase() },
                                             style = MaterialTheme.typography.titleSmall.copy(
                                                 lineHeight = 16.sp // Interlineado compacto
                                             ),
-                                            fontWeight = FontWeight.Black,
+                                            fontWeight = FontWeight.Bold,
                                             color = Color(0xFF212121),
-                                            maxLines = 2, // <--- Ahora soporta 2 renglones
                                             overflow = TextOverflow.Ellipsis
                                         )
                                         Text(
@@ -277,14 +296,15 @@ fun ShoppingListScreen(
                                         modifier = Modifier.padding(horizontal = 4.dp)
                                     ) {
                                         Text(
-                                            text = "FALTAN",
+                                            text = "Faltan",
                                             style = MaterialTheme.typography.labelSmall,
                                             color = colorUrgencia,
-                                            fontWeight = FontWeight.Black
+                                            fontWeight = FontWeight.Medium
                                         )
                                         Row(verticalAlignment = Alignment.Bottom) {
                                             Text(
                                                 text = faltanteTxt,
+                                                style = MaterialTheme.typography.headlineSmall,
                                                 fontSize = 26.sp,
                                                 fontWeight = FontWeight.Black,
                                                 color = colorUrgencia,
@@ -311,7 +331,7 @@ fun ShoppingListScreen(
                                                 "%.1f".format(faltante).replace(",", ".")
                                             showDialog = true
                                         }, modifier = Modifier
-                                            .size(38.dp)
+                                            .size(48.dp)
                                             .background(
                                                 Color(0xFF43A047), RoundedCornerShape(10.dp)
                                             )
@@ -320,7 +340,7 @@ fun ShoppingListScreen(
                                             Icons.Default.AddShoppingCart,
                                             null,
                                             tint = Color.White,
-                                            modifier = Modifier.size(18.dp)
+                                            modifier = Modifier.size(24.dp)
                                         )
                                     }
                                 }

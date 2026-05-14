@@ -4,6 +4,7 @@ import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -18,28 +19,33 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Inventory
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.Security
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -53,6 +59,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MaterialTheme.typography
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
@@ -252,264 +259,308 @@ class MainActivity : ComponentActivity() {
                         viewModel.markOnboardingAsSeen(userState!!.uid)
                     })
                 } else {
+
+                    if (drawerState.isOpen) {
+                        BackHandler {
+                            scope.launch {
+                                drawerState.close()
+                            }
+                        }
+                    }
                     ModalNavigationDrawer(
                         drawerState = drawerState, drawerContent = {
                             ModalDrawerSheet(
+                                windowInsets = WindowInsets(0),
                                 drawerContainerColor = Color(0xFFFDFDFF),
-                                drawerShape = RoundedCornerShape(0.dp),
+                                drawerShape = RoundedCornerShape(topEnd = 20.dp, bottomEnd = 20.dp),
                                 modifier = Modifier.width(320.dp)
                             ) {
-                                // --- ENCABEZADO ---
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(200.dp)
-                                        .background(
-                                            brush = Brush.verticalGradient(
-                                                colors = listOf(
-                                                    Color(0xFF1A237E), // Azul oscuro (Indigo 900)
-                                                    Color(0xFF3949AB)  // Azul intermedio (Indigo 600)
+                                //val scrollState = rememberScrollState()
+
+                                Column(
+                                    modifier = Modifier.fillMaxHeight()
+                                    //.verticalScroll(scrollState)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(240.dp)
+                                            .background(
+                                                brush = Brush.verticalGradient(
+                                                    colors = listOf(
+                                                        Color(0xFF0D124A), Color(0xFF1A237E)
+                                                    )
                                                 )
                                             )
-                                        )
-                                ) {
+                                    ) {
+                                        Column(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .statusBarsPadding()
+                                                .padding(vertical = 20.dp, horizontal = 20.dp),
+                                            verticalArrangement = Arrangement.Bottom
+                                        ) {
+                                            Box(contentAlignment = Alignment.Center) {
+                                                Surface(
+                                                    modifier = Modifier
+                                                        .size(84.dp)
+                                                        .clickable {
+                                                            if (!isUploadingPhoto) showProfileOptions =
+                                                                true
+                                                        },
+                                                    shape = CircleShape,
+                                                    color = Color.White.copy(alpha = 0.15f),
+                                                    border = BorderStroke(
+                                                        2.dp, Color.White.copy(alpha = 0.6f)
+                                                    )
+                                                ) {
+                                                    if (userState?.photoUrl != null) {
+                                                        AsyncImage(
+                                                            model = userState?.photoUrl,
+                                                            contentDescription = null,
+                                                            modifier = Modifier.fillMaxSize(),
+                                                            contentScale = ContentScale.Crop
+                                                        )
+                                                    } else {
+                                                        Icon(
+                                                            Icons.Default.AccountCircle,
+                                                            null,
+                                                            modifier = Modifier
+                                                                .fillMaxSize()
+                                                                .padding(8.dp),
+                                                            tint = Color.White
+                                                        )
+                                                    }
+                                                }
+
+                                                if (isUploadingPhoto) {
+                                                    CircularProgressIndicator(
+                                                        modifier = Modifier.size(
+                                                            72.dp
+                                                        ), color = Color.White
+                                                    )
+                                                }
+                                            }
+
+                                            Spacer(modifier = Modifier.height(12.dp))
+
+                                            // USA userState PARA EL NOMBRE Y MAIL
+                                            Text(
+                                                text = userState?.displayName ?: "Usuario Master",
+                                                style = typography.titleLarge,
+                                                color = Color.White,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                            Text(
+                                                text = userState?.email ?: "",
+                                                style = typography.bodyMedium,
+                                                color = Color.White.copy(alpha = 0.85f),
+                                                fontWeight = FontWeight.Medium,
+                                                maxLines = 1,
+                                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                            )
+                                        }
+                                    }
+
                                     Column(
                                         modifier = Modifier
-                                            .fillMaxSize()
-                                            .padding(24.dp),
-                                        verticalArrangement = Arrangement.Bottom
+                                            .weight(1f)
+                                            .verticalScroll(rememberScrollState())
+                                            .padding(top = 16.dp, bottom = 24.dp)
                                     ) {
-                                        Box(contentAlignment = Alignment.Center) {
-                                            Surface(
-                                                modifier = Modifier
-                                                    .size(72.dp)
-                                                    .clickable {
-                                                        if (!isUploadingPhoto) showProfileOptions =
-                                                            true
-                                                    },
-                                                shape = CircleShape,
-                                                color = Color.White.copy(alpha = 0.2f),
-                                                border = BorderStroke(2.dp, Color.White)
-                                            ) {
-                                                // USA userState DIRECTAMENTE AQUÍ
-                                                if (userState?.photoUrl != null) {
-                                                    AsyncImage(
-                                                        model = userState?.photoUrl,
-                                                        contentDescription = null,
-                                                        modifier = Modifier.fillMaxSize(),
-                                                        contentScale = ContentScale.Crop
-                                                    )
-                                                } else {
-                                                    Icon(
-                                                        Icons.Default.AccountCircle,
-                                                        null,
-                                                        modifier = Modifier
-                                                            .fillMaxSize()
-                                                            .padding(4.dp),
-                                                        tint = Color.White
-                                                    )
-                                                }
-                                            }
-
-                                            if (isUploadingPhoto) {
-                                                CircularProgressIndicator(
-                                                    modifier = Modifier.size(
-                                                        72.dp
-                                                    ), color = Color.White
-                                                )
-                                            }
-                                        }
-
-                                        Spacer(modifier = Modifier.height(12.dp))
-
-                                        // USA userState PARA EL NOMBRE Y MAIL
-                                        Text(
-                                            text = userState?.displayName ?: "Usuario Master",
-                                            style = typography.titleLarge,
-                                            color = Color.White,
-                                            fontWeight = FontWeight.Black
-                                        )
-                                        Text(
-                                            text = userState?.email ?: "",
-                                            style = typography.bodySmall,
-                                            color = Color.White.copy(alpha = 0.6f)
-                                        )
-                                    }
-                                }
-
-                                Spacer(modifier = Modifier.height(24.dp))
-
-                                // 2. SECCIÓN "TU HOGAR": Estilo Tarjeta Glass
-                                Text(
-                                    text = "GESTIÓN DE HOGAR",
-                                    style = typography.labelLarge,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color.Gray,
-                                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
-                                )
-
-                                Surface(
-                                    modifier = Modifier
-                                        .padding(horizontal = 16.dp)
-                                        .fillMaxWidth(),
-                                    color = Color(0xFFF5F6FA),
-                                    shape = RoundedCornerShape(20.dp)
-                                ) {
-                                    Row(
-                                        modifier = Modifier.padding(16.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Column(modifier = Modifier.weight(1f)) {
-                                            Text(
-                                                "Código de invitación",
-                                                style = typography.labelSmall,
-                                                color = Color.Gray
-                                            )
-                                            Text(
-                                                text = viewModel.inviteCode ?: "Generando...",
-                                                style = typography.headlineSmall,
-                                                fontWeight = FontWeight.Black,
-                                                color = Color(0xFF1A237E)
-                                            )
-                                        }
-                                        IconButton(
-                                            onClick = {
-                                                viewModel.inviteCode?.let { code ->
-                                                    clipboardManager.setText(
-                                                        AnnotatedString(
-                                                            code
-                                                        )
-                                                    )
-                                                    Toast.makeText(
-                                                        context,
-                                                        "¡Código copiado!",
-                                                        Toast.LENGTH_SHORT
-                                                    ).show()
-                                                }
-                                            },
+                                        //SECCIÓN "TU HOGAR": Estilo Tarjeta Glass
+                                        Surface(
                                             modifier = Modifier
-                                                .background(Color.White, CircleShape)
-                                                .size(40.dp)
+                                                .padding(horizontal = 16.dp)
+                                                .fillMaxWidth(),
+                                            color = Color(0xFF1A237E).copy(alpha = 0.10f),
+                                            shape = RoundedCornerShape(16.dp),
+                                            shadowElevation = 0.dp,
+                                            border = BorderStroke(
+                                                1.dp, Color(0xFF1A237E).copy(alpha = 0.25f)
+                                            )
                                         ) {
-                                            Icon(
-                                                Icons.Default.ContentCopy,
-                                                null,
-                                                tint = Color(0xFF1A237E),
-                                                modifier = Modifier.size(20.dp)
-                                            )
-                                        }
-                                    }
-                                }
-
-                                Spacer(modifier = Modifier.height(32.dp))
-
-                                // 3. MENÚ DE NAVEGACIÓN: Con más aire y mejores íconos
-                                val items = listOf(
-                                    Triple("Inventario", Icons.Default.List, "home"),
-                                    Triple("Categorías", Icons.Default.Settings, "categories"),
-                                    Triple(
-                                        "Lista de Compras",
-                                        Icons.Default.ShoppingCart,
-                                        "shopping_list"
-                                    )
-                                )
-
-                                items.forEach { (label, icon, route) ->
-                                    val isSelected = currentRoute == route
-                                    NavigationDrawerItem(
-                                        icon = {
-                                            Icon(
-                                                icon, null, modifier = Modifier.size(24.dp)
-                                            )
-                                        }, label = {
-                                            Text(
-                                                label.uppercase(),
-                                                fontWeight = if (isSelected) FontWeight.Black else FontWeight.Medium,
-                                                letterSpacing = 1.sp
-                                            )
-                                        }, selected = isSelected, onClick = {
-                                            navController.navigate(route) {
-                                                popUpTo("home") {
-                                                    inclusive = false
+                                            Row(
+                                                modifier = Modifier.padding(
+                                                    horizontal = 16.dp, vertical = 12.dp
+                                                ), verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Column(modifier = Modifier.weight(1f)) {
+                                                    Text(
+                                                        "Código de invitación",
+                                                        style = typography.labelSmall,
+                                                        fontWeight = FontWeight.Bold,
+                                                        color = Color(0xFF1A237E).copy(alpha = 0.6f)
+                                                    )
+                                                    Text(
+                                                        text = viewModel.inviteCode
+                                                            ?: "Generando...",
+                                                        style = typography.titleLarge,
+                                                        fontWeight = FontWeight.ExtraBold,
+                                                        color = Color(0xFF1A237E)
+                                                    )
+                                                }
+                                                IconButton(
+                                                    onClick = {
+                                                        viewModel.inviteCode?.let { code ->
+                                                            clipboardManager.setText(
+                                                                AnnotatedString(
+                                                                    code
+                                                                )
+                                                            )
+                                                            Toast.makeText(
+                                                                context,
+                                                                "¡Código copiado!",
+                                                                Toast.LENGTH_SHORT
+                                                            ).show()
+                                                        }
+                                                    }, modifier = Modifier
+                                                        .background(
+                                                            Color(0xFF1A237E).copy(alpha = 0.1f),
+                                                            CircleShape
+                                                        )
+                                                        .size(40.dp)
+                                                ) {
+                                                    Icon(
+                                                        Icons.Default.ContentCopy,
+                                                        null,
+                                                        tint = Color(0xFF1A237E),
+                                                        modifier = Modifier.size(20.dp)
+                                                    )
                                                 }
                                             }
-                                            scope.launch { drawerState.close() }
-                                        }, colors = NavigationDrawerItemDefaults.colors(
-                                            selectedContainerColor = Color(0xFFE8EAF6),
-                                            selectedTextColor = Color(0xFF1A237E),
-                                            selectedIconColor = Color(0xFF1A237E),
-                                            unselectedContainerColor = Color.Transparent,
-                                            unselectedTextColor = Color.Gray,
-                                            unselectedIconColor = Color.Gray
-                                        ), modifier = Modifier.padding(
-                                            horizontal = 16.dp, vertical = 4.dp
+                                        }
+
+                                        Spacer(modifier = Modifier.height(24.dp))
+
+                                        val items = listOf(
+                                            Triple(
+                                                "Inventario", Icons.AutoMirrored.Filled.List, "home"
+                                            ), Triple(
+                                                "Categorías", Icons.Default.Category, "categories"
+                                            ), Triple(
+                                                "Lista de compras",
+                                                Icons.Default.ShoppingCart,
+                                                "shopping_list"
+                                            )
                                         )
-                                    )
+
+                                        items.forEach { (label, icon, route) ->
+                                            val isSelected = currentRoute == route
+                                            NavigationDrawerItem(
+                                                icon = {
+                                                    Icon(
+                                                        icon, null, modifier = Modifier.size(26.dp)
+                                                    )
+                                                }, label = {
+                                                    Text(
+                                                        label,
+                                                        style = typography.titleMedium,
+                                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                                                    )
+                                                }, selected = isSelected, onClick = {
+                                                    navController.navigate(route) {
+                                                        popUpTo("home") {
+                                                            inclusive = false
+                                                        }
+                                                    }
+                                                    scope.launch { drawerState.close() }
+                                                }, colors = NavigationDrawerItemDefaults.colors(
+                                                    selectedContainerColor = Color(0xFF1A237E).copy(
+                                                        alpha = 0.12f
+                                                    ),
+                                                    selectedTextColor = Color(0xFF1A237E),
+                                                    selectedIconColor = Color(0xFF1A237E),
+                                                    unselectedContainerColor = Color.Transparent,
+                                                    unselectedTextColor = Color(0xFF37474F),
+                                                    unselectedIconColor = Color(0xFF37474F) // unificamos, antes era 0xFF3949AB
+                                                ), modifier = Modifier.padding(
+                                                    horizontal = 12.dp, vertical = 4.dp
+                                                )
+                                            )
+                                        }
+
+                                        Spacer(modifier = Modifier.height(32.dp))
+
+                                        //PIE DE PÁGINA: Acciones críticas
+                                        HorizontalDivider(
+                                            modifier = Modifier.padding(
+                                                horizontal = 24.dp, vertical = 8.dp
+                                            ),
+                                            thickness = 1.dp,
+                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+                                        )
+
+                                        NavigationDrawerItem(
+                                            icon = {
+                                                Icon(
+                                                    Icons.Default.Add,
+                                                    null,
+                                                    tint = Color(0xFF43A047),
+                                                    modifier = Modifier.size(26.dp)
+                                                )
+                                            }, label = {
+                                                Text(
+                                                    "Unirse a otro hogar",
+                                                    style = typography.titleMedium,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = Color(0xFF43A047)
+                                                )
+                                            }, selected = false, onClick = {
+                                                scope.launch { drawerState.close() }
+                                                showJoinDialog = true
+                                            }, modifier = Modifier.padding(
+                                                horizontal = 12.dp, vertical = 4.dp
+                                            )
+                                        )
+                                        NavigationDrawerItem(
+                                            icon = {
+                                                Icon(
+                                                    imageVector = Icons.Default.Group,
+                                                    contentDescription = "Miembros del hogar",
+                                                    tint = Color(0xFF3949AB),
+                                                    modifier = Modifier.size(26.dp)
+                                                )
+                                            }, label = {
+                                                Text(
+                                                    text = "Miembros del hogar",
+                                                    style = typography.titleMedium,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = Color(0xFF37474F)
+                                                )
+                                            }, selected = false, onClick = {
+                                                scope.launch { drawerState.close() }
+                                                showMembersSheet = true
+                                            }, modifier = Modifier.padding(
+                                                horizontal = 12.dp, vertical = 4.dp
+                                            )
+                                        )
+
+                                        NavigationDrawerItem(
+                                            icon = {
+                                                Icon(
+                                                    Icons.AutoMirrored.Filled.ExitToApp,
+                                                    null,
+                                                    tint = Color(0xFF546E7A),
+                                                    modifier = Modifier.size(26.dp) //
+                                                )
+                                            },
+                                            label = {
+                                                Text(
+                                                    "Cerrar sesión",
+                                                    fontWeight = FontWeight.Bold,
+                                                    style = typography.titleMedium,
+                                                    color = Color(0xFF546E7A)
+                                                )
+                                            },
+                                            selected = false,
+                                            onClick = { auth.signOut() },
+                                            modifier = Modifier.padding(
+                                                horizontal = 12.dp, vertical = 4.dp
+                                            )
+                                        )
+                                    }
                                 }
-
-                                Spacer(modifier = Modifier.weight(1f))
-
-                                // 4. PIE DE PÁGINA: Acciones críticas
-                                HorizontalDivider(
-                                    modifier = Modifier.padding(
-                                        horizontal = 24.dp
-                                    ), color = Color.LightGray.copy(alpha = 0.3f)
-                                )
-
-                                NavigationDrawerItem(
-                                    icon = {
-                                        Icon(
-                                            Icons.Default.Add, null, tint = Color(0xFF43A047)
-                                        )
-                                    },
-                                    label = {
-                                        Text(
-                                            "UNIRSE A OTRO HOGAR",
-                                            fontWeight = FontWeight.Bold,
-                                            color = Color(0xFF43A047)
-                                        )
-                                    },
-                                    selected = false,
-                                    onClick = {
-                                        scope.launch { drawerState.close() }
-                                        showJoinDialog = true
-                                    },
-                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                                )
-                                NavigationDrawerItem(
-                                    icon = { Icon(Icons.Default.Group, null) },
-                                    label = {
-                                        Text(
-                                            "MIEMBROS DEL HOGAR", fontWeight = FontWeight.Bold
-                                        )
-                                    },
-                                    selected = false,
-                                    onClick = {
-                                        scope.launch { drawerState.close() }
-                                        showMembersSheet = true
-                                    },
-                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
-                                )
-
-                                NavigationDrawerItem(
-                                    icon = {
-                                        Icon(
-                                            Icons.Default.ExitToApp, null, tint = Color.LightGray
-                                        )
-                                    },
-                                    label = {
-                                        Text(
-                                            "CERRAR SESIÓN",
-                                            fontWeight = FontWeight.Bold,
-                                            color = Color.LightGray
-                                        )
-                                    },
-                                    selected = false,
-                                    onClick = { auth.signOut() },
-                                    modifier = Modifier.padding(
-                                        start = 16.dp, end = 16.dp, bottom = 24.dp
-                                    )
-                                )
                             }
                         }) {
                         Scaffold(
@@ -570,8 +621,7 @@ class MainActivity : ComponentActivity() {
                                         viewModel.joinHousehold(codigoIngresado)
 
                                         showJoinDialog = false
-                                    }
-                                )
+                                    })
                             }
                             if (showProfileOptions) {
                                 AlertDialog(
@@ -669,7 +719,6 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
-
         }
     }
 
@@ -815,15 +864,14 @@ fun UpdateRequiredScreen(context: android.content.Context) {
 
 @Composable
 fun JoinHouseholdDialog(
-    onDismiss: () -> Unit,
-    onJoin: (String) -> Unit
+    onDismiss: () -> Unit, onJoin: (String) -> Unit
 ) {
     var code by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = { if (!isLoading) onDismiss() },
-        title = { Text("Unirse a un Hogar") },
+        title = { Text("Unirse a un hogar") },
         text = {
             Column {
                 Text("Ingresá el código de 6 caracteres:")
@@ -849,9 +897,9 @@ fun JoinHouseholdDialog(
                     if (code.length == 6) {
                         onJoin(code)
                     }
-                },
-                enabled = code.length == 6,
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1A237E))
+                }, enabled = code.length == 6, colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF1A237E), contentColor = Color.White
+                )
             ) {
                 Text("Unirse")
             }
