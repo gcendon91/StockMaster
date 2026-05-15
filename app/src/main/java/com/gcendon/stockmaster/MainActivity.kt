@@ -37,11 +37,11 @@ import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Category
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Face
+import androidx.compose.material.icons.filled.GridView
 import androidx.compose.material.icons.filled.Group
 import androidx.compose.material.icons.filled.Inventory
 import androidx.compose.material.icons.filled.PhotoLibrary
@@ -388,7 +388,7 @@ class MainActivity : ComponentActivity() {
                                                 Column(modifier = Modifier.weight(1f)) {
                                                     Text(
                                                         "Código de invitación",
-                                                        style = typography.labelSmall,
+                                                        style = typography.labelMedium,
                                                         fontWeight = FontWeight.Bold,
                                                         color = Color(0xFF1A237E).copy(alpha = 0.6f)
                                                     )
@@ -437,7 +437,7 @@ class MainActivity : ComponentActivity() {
                                             Triple(
                                                 "Inventario", Icons.AutoMirrored.Filled.List, "home"
                                             ), Triple(
-                                                "Categorías", Icons.Default.Category, "categories"
+                                                "Categorías", Icons.Default.GridView, "categories"
                                             ), Triple(
                                                 "Lista de compras",
                                                 Icons.Default.ShoppingCart,
@@ -455,8 +455,8 @@ class MainActivity : ComponentActivity() {
                                                 }, label = {
                                                     Text(
                                                         label,
-                                                        style = typography.titleMedium,
-                                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                                                        style = typography.titleLarge,
+                                                        fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium
                                                     )
                                                 }, selected = isSelected, onClick = {
                                                     navController.navigate(route) {
@@ -474,22 +474,26 @@ class MainActivity : ComponentActivity() {
                                                     unselectedContainerColor = Color.Transparent,
                                                     unselectedTextColor = Color(0xFF37474F),
                                                     unselectedIconColor = Color(0xFF37474F) // unificamos, antes era 0xFF3949AB
-                                                ), modifier = Modifier.padding(
-                                                    horizontal = 12.dp, vertical = 4.dp
-                                                )
+                                                ), modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .padding(
+                                                        horizontal = 12.dp, vertical = 4.dp
+                                                    )
                                             )
                                         }
 
-                                        Spacer(modifier = Modifier.height(32.dp))
+                                        Spacer(modifier = Modifier.height(8.dp))
 
-                                        //PIE DE PÁGINA: Acciones críticas
+                                        //PIE DE PAGINA
                                         HorizontalDivider(
                                             modifier = Modifier.padding(
                                                 horizontal = 24.dp, vertical = 8.dp
                                             ),
                                             thickness = 1.dp,
-                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+                                            color = Color(0xFF1A237E).copy(alpha = 0.15f) // mismo azul de la app, más visible
                                         )
+
+                                        Spacer(modifier = Modifier.height(8.dp))
 
                                         NavigationDrawerItem(
                                             icon = {
@@ -502,64 +506,92 @@ class MainActivity : ComponentActivity() {
                                             }, label = {
                                                 Text(
                                                     "Unirse a otro hogar",
-                                                    style = typography.titleMedium,
-                                                    fontWeight = FontWeight.Bold,
+                                                    style = typography.titleLarge,
+                                                    fontWeight = FontWeight.SemiBold,
                                                     color = Color(0xFF43A047)
                                                 )
                                             }, selected = false, onClick = {
                                                 scope.launch { drawerState.close() }
                                                 showJoinDialog = true
-                                            }, modifier = Modifier.padding(
-                                                horizontal = 12.dp, vertical = 4.dp
-                                            )
+                                            }, modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(
+                                                    horizontal = 12.dp, vertical = 4.dp
+                                                )
                                         )
                                         NavigationDrawerItem(
                                             icon = {
                                                 Icon(
                                                     imageVector = Icons.Default.Group,
                                                     contentDescription = "Miembros del hogar",
-                                                    tint = Color(0xFF3949AB),
+                                                    tint = Color(0xFF37474F),
                                                     modifier = Modifier.size(26.dp)
                                                 )
                                             }, label = {
                                                 Text(
                                                     text = "Miembros del hogar",
-                                                    style = typography.titleMedium,
-                                                    fontWeight = FontWeight.Bold,
+                                                    style = typography.titleLarge,
+                                                    fontWeight = FontWeight.SemiBold,
                                                     color = Color(0xFF37474F)
                                                 )
                                             }, selected = false, onClick = {
                                                 scope.launch { drawerState.close() }
                                                 showMembersSheet = true
-                                            }, modifier = Modifier.padding(
-                                                horizontal = 12.dp, vertical = 4.dp
-                                            )
-                                        )
-
-                                        NavigationDrawerItem(
-                                            icon = {
-                                                Icon(
-                                                    Icons.AutoMirrored.Filled.ExitToApp,
-                                                    null,
-                                                    tint = Color(0xFF546E7A),
-                                                    modifier = Modifier.size(26.dp) //
+                                            }, modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(
+                                                    horizontal = 12.dp, vertical = 4.dp
                                                 )
-                                            },
-                                            label = {
-                                                Text(
-                                                    "Cerrar sesión",
-                                                    fontWeight = FontWeight.Bold,
-                                                    style = typography.titleMedium,
-                                                    color = Color(0xFF546E7A)
-                                                )
-                                            },
-                                            selected = false,
-                                            onClick = { auth.signOut() },
-                                            modifier = Modifier.padding(
-                                                horizontal = 12.dp, vertical = 4.dp
-                                            )
                                         )
+//
+//                                        NavigationDrawerItem(
+//                                            icon = {
+//                                            Icon(
+//                                                Icons.AutoMirrored.Filled.ExitToApp,
+//                                                null,
+//                                                tint = Color(0xFFE53935),
+//                                                modifier = Modifier.size(26.dp) //
+//                                            )
+//                                        },
+//                                            label = {
+//                                                Text(
+//                                                    "Cerrar sesión",
+//                                                    style = MaterialTheme.typography.titleLarge,
+//                                                    fontWeight = FontWeight.SemiBold,
+//                                                    color = Color(0xFFE53935)
+//                                                )
+//                                            },
+//                                            selected = false,
+//                                            onClick = { auth.signOut() },
+//                                            modifier = Modifier
+//                                                .fillMaxWidth()
+//                                                .padding(start = 12.dp, end = 12.dp, top = 32.dp, bottom = 8.dp)
+//                                        )
                                     }
+
+                                    NavigationDrawerItem(
+                                        icon = {
+                                            Icon(
+                                                Icons.AutoMirrored.Filled.ExitToApp,
+                                                null,
+                                                tint = Color(0xFFE53935),
+                                                modifier = Modifier.size(26.dp)
+                                            )
+                                        },
+                                        label = {
+                                            Text(
+                                                "Cerrar sesión",
+                                                style = typography.titleLarge,
+                                                fontWeight = FontWeight.SemiBold,
+                                                color = Color(0xFFE53935)
+                                            )
+                                        },
+                                        selected = false,
+                                        onClick = { auth.signOut() },
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 12.dp, vertical = 12.dp)
+                                    )
                                 }
                             }
                         }) {
