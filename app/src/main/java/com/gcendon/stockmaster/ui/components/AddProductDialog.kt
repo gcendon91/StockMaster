@@ -30,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
@@ -45,6 +46,7 @@ fun AddProductDialog(
     product: Product? = null,
     onDismiss: () -> Unit,
     categories: List<Category>,
+    existingProducts: List<Product>,
     onConfirm: (String, String, Double, String, Double) -> Unit,
     onAddCategory: (String) -> Unit
 ) {
@@ -61,6 +63,11 @@ fun AddProductDialog(
     val focusRequester = remember { FocusRequester() }
     val units = listOf("unid", "kg", "gr", "L", "ml", "pack", "frasco")
 
+    // ESTADOS DE ERROR
+    var nameError by remember { mutableStateOf<String?>(null) }
+    var stockError by remember { mutableStateOf<String?>(null) }
+    var idealError by remember { mutableStateOf<String?>(null) }
+
     // FIX DEL FOCO: Usamos un delay de 100ms para asegurar que el diálogo ya cargó
     LaunchedEffect(Unit) {
         delay(400)
@@ -76,7 +83,7 @@ fun AddProductDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(if (product == null) "Nuevo Producto" else "Editar Producto") },
+        title = { Text(if (product == null) "Nuevo producto" else "Editar producto") },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextField(
@@ -85,7 +92,13 @@ fun AddProductDialog(
                         // Si el texto no está vacío, ponemos la primera en mayúscula
                         name = input.replaceFirstChar {
                             if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString()
-                        }
+                        }; nameError = null
+                    },
+                    isError = nameError != null,
+                    supportingText = {
+                        if (nameError != null) Text(
+                            nameError!!, color = MaterialTheme.colorScheme.error
+                        )
                     },
                     label = { Text("Nombre") },
                     modifier = Modifier
@@ -93,8 +106,7 @@ fun AddProductDialog(
                         .focusRequester(focusRequester), // ASIGNACIÓN DEL FOCO
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(
-                        capitalization = KeyboardCapitalization.Words,
-                        imeAction = ImeAction.Next
+                        capitalization = KeyboardCapitalization.Words, imeAction = ImeAction.Next
                     )
                 )
 
@@ -108,8 +120,7 @@ fun AddProductDialog(
                             label = "Categoría",
                             options = categories.map { it.name },
                             selectedOption = selectedCategory,
-                            onOptionSelected = { selectedCategory = it }
-                        )
+                            onOptionSelected = { selectedCategory = it })
                     }
 
                     IconButton(
@@ -118,7 +129,7 @@ fun AddProductDialog(
                     ) {
                         Icon(
                             Icons.Default.Add,
-                            contentDescription = "Nueva Cat",
+                            contentDescription = "Nueva cat",
                             tint = MaterialTheme.colorScheme.primary // COLOR ORIGINAL
                         )
                     }
@@ -127,11 +138,16 @@ fun AddProductDialog(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TextField(
                         value = stock,
-                        onValueChange = { stock = it },
+                        onValueChange = { stock = it; stockError = null },
+                        isError = stockError != null,
+                        supportingText = {
+                            if (stockError != null) Text(
+                                stockError!!, color = MaterialTheme.colorScheme.error
+                            )
+                        },
                         label = { Text("Cantidad") },
                         keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Decimal,
-                            imeAction = ImeAction.Next
+                            keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Next
                         ),
                         modifier = Modifier.weight(1f),
                         singleLine = true
@@ -141,19 +157,23 @@ fun AddProductDialog(
                             label = "Unidad",
                             options = units,
                             selectedOption = selectedUnit,
-                            onOptionSelected = { selectedUnit = it }
-                        )
+                            onOptionSelected = { selectedUnit = it })
                     }
                 }
 
                 TextField(
                     value = idealStock,
-                    onValueChange = { idealStock = it },
-                    label = { Text("Stock Ideal ($selectedUnit)") },
+                    onValueChange = { idealStock = it; idealError = null },
+                    label = { Text("Stock ideal ($selectedUnit)") },
+                    isError = idealError != null,
+                    supportingText = {
+                        if (idealError != null) Text(
+                            idealError!!, color = MaterialTheme.colorScheme.error
+                        )
+                    },
                     placeholder = { Text("Ej: 5.0") },
                     keyboardOptions = KeyboardOptions(
-                        keyboardType = KeyboardType.Decimal,
-                        imeAction = ImeAction.Done
+                        keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done
                     ),
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
@@ -166,23 +186,54 @@ fun AddProductDialog(
                     val stockDouble = stock.toDoubleOrNull() ?: 0.0
                     val idealDouble = idealStock.toDoubleOrNull() ?: 1.0
 
-                    if (name.isNotBlank() && selectedCategory.isNotBlank()) {
-                        // 1. Guardamos el producto
-                        onConfirm(name, selectedCategory, stockDouble, selectedUnit, idealDouble)
+                    // RESETEAMOS ERRORES
+                    nameError = null
+                    stockError = null
+                    idealError = null
 
-                        // 2. Decidimos si cerrar o limpiar
-                        if (product == null) {
-                            // Es NUEVO: No cerramos, solo limpiamos para el siguiente
-                            name = ""
-                            stock = ""
-                            idealStock = ""
-                            selectedUnit = "unid"
-                            // Re-pedimos el foco para el siguiente producto
-                            focusRequester.requestFocus()
-                        } else {
-                            // Es EDICIÓN: Cerramos el diálogo normalmente
-                            onDismiss()
+                    // VALIDACIONES MÚLTIPLES
+                    var hayError = false
+
+                    if (name.isBlank()) {
+                        nameError = "El nombre es obligatorio"
+                        hayError = true
+                    } else {
+                        val isDuplicate = existingProducts.any {
+                            it.name.trim()
+                                .equals(name.trim(), ignoreCase = true) && it.id != product?.id
                         }
+                        if (isDuplicate) {
+                            nameError = "Este producto ya existe"
+                            hayError = true
+                        }
+                    }
+                    if (stockDouble < 0) {
+                        stockError = "No puede ser negativo"
+                        hayError = true
+                    }
+                    if (idealDouble < 0) {
+                        idealError = "No puede ser negativo"
+                        hayError = true
+                    }
+
+                    if (hayError) {
+                        focusRequester.requestFocus() // Devolvemos el foco al nombre por las dudas
+                        return@Button
+                    } // Si algo está mal, frenamos acá
+
+                    // mandamos al ViewModel para que intente guardar o valide
+                    onConfirm(name.trim(), selectedCategory, stockDouble, selectedUnit, idealDouble)
+
+                    // LÓGICA DE LIMPIEZA VS PERSISTENCIA
+                    if (product == null) {
+                        // Es nuevo: Limpiamos para el que sigue
+                        name = ""
+                        stock = ""
+                        idealStock = ""
+                        focusRequester.requestFocus()
+                    } else {
+                        // Es edición: Cerramos
+                        onDismiss()
                     }
                 },
                 colors = ButtonDefaults.buttonColors(
@@ -190,19 +241,22 @@ fun AddProductDialog(
                     contentColor = Color.White
                 )
             ) {
-                Text(if (product == null) "Guardar y Seguir" else "Guardar")
+                Text(
+                    text = if (product == null) "Guardar y seguir" else "Guardar cambios",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold
+                )
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancelar") // COLOR/TEXTO ORIGINAL
+            TextButton(onClick = onDismiss) { // ESTE ES EL ÚNICO QUE CIERRA
+                Text("Cancelar")
             }
-        }
-    )
+        })
     if (showAddCategoryDialog) {
         AlertDialog(
             onDismissRequest = { showAddCategoryDialog = false },
-            title = { Text("Nueva Categoría") },
+            title = { Text("Nueva categoría") },
             text = {
                 TextField(
                     value = newCategoryName,
@@ -223,7 +277,6 @@ fun AddProductDialog(
             },
             dismissButton = {
                 TextButton(onClick = { showAddCategoryDialog = false }) { Text("Cancelar") }
-            }
-        )
+            })
     }
 }

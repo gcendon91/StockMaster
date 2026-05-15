@@ -162,7 +162,9 @@ fun CategoryScreen(
                                             tint = Color(0xFF3949AB)
                                         )
                                     }
-                                    IconButton(onClick = { viewModel.deleteCategory(category.id) }) {
+                                    IconButton(onClick = {
+                                        viewModel.deleteCategory(category.id, category.name)
+                                    }) {
                                         Icon(
                                             Icons.Default.Delete,
                                             contentDescription = "Borrar",

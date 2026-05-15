@@ -59,7 +59,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MaterialTheme.typography
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
@@ -67,7 +66,6 @@ import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -109,6 +107,7 @@ import com.gcendon.stockmaster.ui.screens.LoginScreen
 import com.gcendon.stockmaster.ui.screens.OnboardingScreen
 import com.gcendon.stockmaster.ui.screens.ShoppingListScreen
 import com.gcendon.stockmaster.ui.theme.StockMasterTheme
+import com.gcendon.stockmaster.ui.viewmodel.ProductUiState
 import com.gcendon.stockmaster.ui.viewmodel.ProductViewModel
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.userProfileChangeRequest
@@ -139,7 +138,7 @@ class MainActivity : ComponentActivity() {
             var showProfileOptions by remember { mutableStateOf(false) }
             val isFullyAuthenticated = userState != null && userState?.isEmailVerified == true
             val needsOnboarding = !viewModel.hasSeenOnboarding
-            val snackbarHostState = remember { SnackbarHostState() }
+            remember { SnackbarHostState() }
 
             val navBackStackEntry by navController.currentBackStackEntryAsState()
             val currentRoute = navBackStackEntry?.destination?.route
@@ -241,12 +240,6 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                LaunchedEffect(Unit) {
-                    viewModel.uiEvent.collect { mensaje ->
-                        snackbarHostState.showSnackbar(mensaje)
-                    }
-                }
-
                 if (isLoadingCheck) {
                     SplashScreenSimple()
                 } else if (isUpdateRequired) {
@@ -259,6 +252,10 @@ class MainActivity : ComponentActivity() {
                         viewModel.markOnboardingAsSeen(userState!!.uid)
                     })
                 } else {
+
+                    val uiState by viewModel.uiState.collectAsState()
+                    val currentProducts =
+                        (uiState as? ProductUiState.Success)?.products ?: emptyList()
 
                     if (drawerState.isOpen) {
                         BackHandler {
@@ -597,7 +594,6 @@ class MainActivity : ComponentActivity() {
                         }) {
                         Scaffold(
                             modifier = Modifier.fillMaxSize(),
-                            snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
                             floatingActionButtonPosition = FabPosition.Center,
                             floatingActionButton = {
                                 // El botón de agregar producto solo aparece en la Home
@@ -638,13 +634,17 @@ class MainActivity : ComponentActivity() {
                             }
 
                             if (showDialog) {
+
                                 AddProductDialog(
                                     onDismiss = { showDialog = false },
                                     categories = categories,
+                                    existingProducts = currentProducts,
                                     onConfirm = { n, c, s, u, i ->
+                                        // Llamamos al VM (si el nombre está vacío, el VM emitirá el error)
                                         viewModel.addProduct(n, c, s, u, i)
                                     },
-                                    onAddCategory = { viewModel.addCategory(it) })
+                                    onAddCategory = { viewModel.addCategory(it) }
+                                )
                             }
                             if (showJoinDialog) {
                                 JoinHouseholdDialog(

@@ -23,6 +23,12 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
+sealed class ProductUiState {
+    object Loading : ProductUiState()
+    data class Success(val products: List<Product>) : ProductUiState()
+    data class Error(val message: String) : ProductUiState()
+}
+
 class ProductViewModel : ViewModel() {
     private val db = Firebase.firestore // Referencia a la base de datos
     private val auth = FirebaseAuth.getInstance()
@@ -37,8 +43,8 @@ class ProductViewModel : ViewModel() {
     var dynamicEmojiMap by mutableStateOf<Map<String, String>>(emptyMap())
         private set
 
-    private val _products = MutableStateFlow<List<Product>?>(null)
-    val products: StateFlow<List<Product>?> = _products.asStateFlow()
+    private val _uiState = MutableStateFlow<ProductUiState>(ProductUiState.Loading)
+    val uiState: StateFlow<ProductUiState> = _uiState.asStateFlow()
 
     var householdId by mutableStateOf<String?>(null)
         private set
@@ -46,8 +52,12 @@ class ProductViewModel : ViewModel() {
     private val _categories = MutableStateFlow<List<Category>>(emptyList())
     val categories: StateFlow<List<Category>> = _categories.asStateFlow()
 
-    val shoppingList: StateFlow<List<Product>> = products.map { lista ->
-        lista?.filter { it.currentStock < it.minStock } ?: emptyList()
+    val shoppingList: StateFlow<List<Product>> = uiState.map { state ->
+        if (state is ProductUiState.Success) {
+            state.products.filter { it.currentStock < it.minStock }
+        } else {
+            emptyList()
+        }
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
     var inviteCode by mutableStateOf<String?>(null)
@@ -78,37 +88,33 @@ class ProductViewModel : ViewModel() {
 
     fun listenToMembers() {
         val hId = householdId ?: return
-        db.collection("users")
-            .whereEqualTo("householdId", hId)
-            .addSnapshotListener { snapshot, _ ->
-                val membersList = snapshot?.documents?.mapNotNull { doc ->
-                    val email = doc.getString("email") ?: ""
-                    val storedName = doc.getString("displayName")
+        db.collection("users").whereEqualTo("householdId", hId).addSnapshotListener { snapshot, _ ->
+            val membersList = snapshot?.documents?.mapNotNull { doc ->
+                val email = doc.getString("email") ?: ""
+                val storedName = doc.getString("displayName")
 
-                    // LÓGICA DE EMERGENCIA:
-                    // Si el nombre es nulo, vacío o el genérico, sacamos el nombre del email
-                    val finalName =
-                        if (storedName.isNullOrBlank() || storedName == "Usuario Master") {
-                            email.substringBefore("@").replaceFirstChar { it.uppercase() }
-                        } else {
-                            storedName
-                        }
+                // LÓGICA DE EMERGENCIA:
+                // Si el nombre es nulo, vacío o el genérico, sacamos el nombre del email
+                val finalName = if (storedName.isNullOrBlank() || storedName == "Usuario Master") {
+                    email.substringBefore("@").replaceFirstChar { it.uppercase() }
+                } else {
+                    storedName
+                }
 
-                    AppUser(
-                        uid = doc.id,
-                        displayName = finalName,
-                        email = email,
-                        photoUrl = doc.getString("photoUrl") ?: ""
-                    )
-                } ?: emptyList()
+                AppUser(
+                    uid = doc.id,
+                    displayName = finalName,
+                    email = email,
+                    photoUrl = doc.getString("photoUrl") ?: ""
+                )
+            } ?: emptyList()
 
-                _members.value = membersList
-            }
+            _members.value = membersList
+        }
     }
 
     fun removeUserFromHousehold(targetUid: String) {
-        db.collection("users").document(targetUid)
-            .update("householdId", targetUid)
+        db.collection("users").document(targetUid).update("householdId", targetUid)
             .addOnSuccessListener {
                 Log.d("HOGAR", "Usuario expulsado correctamente")
             }
@@ -134,10 +140,11 @@ class ProductViewModel : ViewModel() {
     }
 
     private fun listenToProducts(hId: String) {
+        _uiState.value = ProductUiState.Loading
         db.collection("households").document(hId).collection("products")
             .addSnapshotListener { snapshot, e ->
                 if (e != null) {
-                    _products.value = emptyList()
+                    _uiState.value = ProductUiState.Error("Error al cargar el stock")
                     return@addSnapshotListener
                 }
 
@@ -145,20 +152,30 @@ class ProductViewModel : ViewModel() {
                     doc.toObject(Product::class.java)?.copy(id = doc.id)
                 } ?: emptyList()
 
-                _products.value =
+                _uiState.value = ProductUiState.Success(
                     list.sortedWith(compareBy<Product> { it.category }.thenBy { it.name })
+                )
             }
     }
 
-    fun addProduct(name: String, category: String, stock: Double, unit: String, minStock: Double) {
-        val hid = householdId ?: return
 
-        // Ruta nueva: households/ID/products
+    fun addProduct(name: String, category: String, stock: Double, unit: String, minStock: Double) {
+        // 1. Error de Sistema: Esto se queda porque es un problema de la App, no del usuario.
+        val hid = householdId ?: run {
+            viewModelScope.launch { _uiEvent.emit("Error: No se encontró el ID del hogar") }
+            return
+        }
+
+        // 2. Seguro de Vida: Silencioso.
+        // Si el diálogo dejó pasar algo vacío o negativo, acá lo frenamos sin avisar,
+        // porque el "aviso" ya debería estar en rojo en el TextField.
+        if (name.isBlank() || stock < 0 || minStock < 0) return
+
         val docRef = db.collection("households").document(hid).collection("products").document()
 
         val newProduct = Product(
             id = docRef.id,
-            name = name,
+            name = name.trim(),
             category = category,
             currentStock = stock,
             unit = unit,
@@ -166,31 +183,47 @@ class ProductViewModel : ViewModel() {
             householdId = hid
         )
 
-        docRef.set(newProduct).addOnSuccessListener {
-            Log.d("FIREBASE", "Producto creado exitosamente en households/$hid/products")
-        }.addOnFailureListener { e ->
-            Log.e("FIREBASE", "Error al crear producto: ${e.message}")
-        }
+        docRef.set(newProduct)
+            .addOnSuccessListener {
+                Log.d("FIREBASE", "Producto creado: ${newProduct.name}")
+            }
+            .addOnFailureListener { e ->
+                Log.e("FIREBASE", "Error al crear: ${e.message}")
+                viewModelScope.launch {
+                    _uiEvent.emit("Error de red: No se pudo guardar el producto")
+                }
+            }
     }
+
 
     fun updateProduct(
         id: String, name: String, category: String, stock: Double, unit: String, minStock: Double
     ) {
-        val hId = householdId ?: return // Usamos tu variable de estado
+        val hId = householdId ?: return
 
-        val updatedProduct = mapOf(
-            "name" to name,
+        // Seguro de vida silencioso
+        if (name.isBlank() || stock < 0 || minStock < 0) return
+
+        val updatedData = mapOf(
+            "name" to name.trim(),
             "category" to category,
             "currentStock" to stock,
             "unit" to unit,
-            "minStock" to minStock,
-            "householdId" to hId
+            "minStock" to minStock
         )
 
         db.collection("households").document(hId).collection("products").document(id)
-            .update(updatedProduct)
-            .addOnSuccessListener { Log.d("FIREBASE", "Producto $id actualizado en el hogar $hId") }
-            .addOnFailureListener { e -> Log.e("FIREBASE", "Error al actualizar: ${e.message}") }
+            .update(updatedData)
+            .addOnSuccessListener {
+                Log.d("FIREBASE", "Producto $id actualizado")
+            }
+            .addOnFailureListener { e ->
+                // Error de comunicación con Firebase
+                Log.e("FIREBASE", "Error al actualizar: ${e.message}")
+                viewModelScope.launch {
+                    _uiEvent.emit("No se pudieron guardar los cambios. Reintenta por favor.")
+                }
+            }
     }
 
     fun deleteMultipleProducts(productIds: Set<String>) {
@@ -218,8 +251,7 @@ class ProductViewModel : ViewModel() {
                 } else {
                     _categories.value = cats.sortedWith(compareBy<Category> {
                         it.name.equals(
-                            "Otros",
-                            ignoreCase = true
+                            "Otros", ignoreCase = true
                         )
                     }.thenBy { it.name })
                 }
@@ -267,12 +299,28 @@ class ProductViewModel : ViewModel() {
             .addOnSuccessListener { Log.d("Firestore", "Categoría editada") }
     }
 
-    // Eliminar una categoría
-    fun deleteCategory(categoryId: String) {
+    // Eliminar una categoría y mandar los productos a Otros
+    fun deleteCategory(categoryId: String, categoryName: String) {
         val hId = householdId ?: return
 
         db.collection("households").document(hId).collection("categories").document(categoryId)
-            .delete().addOnSuccessListener { Log.d("Firestore", "Categoría eliminada") }
+            .delete()
+            .addOnSuccessListener {
+                Log.d("Firestore", "Categoría eliminada: $categoryName")
+
+                db.collection("households").document(hId).collection("products")
+                    .whereEqualTo("category", categoryName)
+                    .get()
+                    .addOnSuccessListener { snapshot ->
+                        val batch = db.batch()
+                        for (doc in snapshot.documents) {
+                            batch.update(doc.reference, "category", "Otros")
+                        }
+                        batch.commit().addOnSuccessListener {
+                            Log.d("Firestore", "Productos movidos a 'Otros'")
+                        }
+                    }
+            }
     }
 
     fun signInWithGoogle(idToken: String, onResult: (String?) -> Unit) {
@@ -301,32 +349,29 @@ class ProductViewModel : ViewModel() {
             }
 
             // 2. Consulta a Firebase (usando el listener de éxito/error)
-            db.collection("invitations").document(codeUpper).get()
-                .addOnSuccessListener { doc ->
-                    if (doc.exists()) {
-                        val realId = doc.getString("householdId") ?: ""
+            db.collection("invitations").document(codeUpper).get().addOnSuccessListener { doc ->
+                if (doc.exists()) {
+                    val realId = doc.getString("householdId") ?: ""
 
-                        actualizarUsuarioYHogar(uid, realId)
-                    } else {
-                        viewModelScope.launch { _uiEvent.emit("El código no existe o es incorrecto.") }
-                    }
+                    actualizarUsuarioYHogar(uid, realId)
+                } else {
+                    viewModelScope.launch { _uiEvent.emit("El código no existe o es incorrecto.") }
                 }
-                .addOnFailureListener {
-                    viewModelScope.launch { _uiEvent.emit("Error de conexión: ${it.message}") }
-                }
+            }.addOnFailureListener {
+                viewModelScope.launch { _uiEvent.emit("Error de conexión: ${it.message}") }
+            }
         }
     }
 
     private fun actualizarUsuarioYHogar(uid: String, realId: String) {
-        db.collection("users").document(uid).update("householdId", realId)
-            .addOnSuccessListener {
-                this.householdId = realId
-                fetchOrCreateInviteCode(realId)
-                listenToProducts(realId)
-                listenToHouseholdCategories(realId)
+        db.collection("users").document(uid).update("householdId", realId).addOnSuccessListener {
+            this.householdId = realId
+            fetchOrCreateInviteCode(realId)
+            listenToProducts(realId)
+            listenToHouseholdCategories(realId)
 
-                viewModelScope.launch { _uiEvent.emit("¡Te uniste con éxito!") }
-            }
+            viewModelScope.launch { _uiEvent.emit("¡Te uniste con éxito!") }
+        }
     }
 
     fun loginWithEmail(e: String, p: String, onResult: (String?) -> Unit) {
@@ -446,8 +491,7 @@ class ProductViewModel : ViewModel() {
                 val updates = hashMapOf(
                     "displayName" to (doc.getString("displayName")
                         ?: finalName), // Mantenemos el de Firestore si ya tiene uno
-                    "photoUrl" to finalPhoto,
-                    "email" to (currentUser?.email ?: "")
+                    "photoUrl" to finalPhoto, "email" to (currentUser?.email ?: "")
                 )
                 userRef.update(updates as Map<String, Any>)
 
